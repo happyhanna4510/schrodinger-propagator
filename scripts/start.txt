@@ -1,0 +1,17 @@
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release 
+
+
+python .\scripts\plot_morse.py --gamma 10 --xmax 30 --ymin -0.05 --ymax 1.2
+
+powershell -ExecutionPolicy Bypass -File scripts/run_series.ps1   
+
+
+python scripts/plot_psi_wide.py
+
+python scripts/plot_taylor.py --glob "results/taylor_K*_dt1e-6_g10_N2001_x30.csv" --no_show   
+
+
+python scripts/plot_taylor.py --glob ".\results\taylor_K4_dt*.csv"
+
+python scripts/plot_taylor.py --glob "results/taylor_K*_dt*.csv" --split_by_K

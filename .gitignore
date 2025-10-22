@@ -1,41 +1,63 @@
+
 # Prerequisites
 *.d
 
-# Compiled Object files
+# Compiled objects / binaries
 *.slo
 *.lo
 *.o
 *.obj
-
-# Precompiled Headers
 *.gch
 *.pch
-
-# Linker files
 *.ilk
-
-# Debugger Files
 *.pdb
-
-# Compiled Dynamic libraries
 *.so
 *.dylib
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
 *.lai
 *.la
 *.a
 *.lib
-
-# Executables
 *.exe
 *.out
 *.app
-
-# debug information files
 *.dwo
+
+# Build dirs & CMake/MSVC
+/build/
+/cmake-build-*/
+/CMakeCache.txt
+CMakeFiles/
+/*.sln
+/*.vcxproj
+/*.vcxproj.filters
+/*.vcxproj.user
+
+# IDE/editor junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Results, figures, notebooks cache
+/results/*.csv
+/figures/*.png
+.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+
+# Excel & other heavy docs (оставь только то, что НЕ нужно в гите)
+*.xlsx
+*.xls
+
+# Vendor: keep only Eigen headers
+# По умолчанию игнорим third_party
+third_party/**
+
+# Но сохраняем целиком eigen-5.0.0 (всё внутри)
+!third_party/eigen-5.0.0/
+!third_party/eigen-5.0.0/**
+
