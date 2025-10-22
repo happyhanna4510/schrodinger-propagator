@@ -10,7 +10,9 @@ namespace fs = std::filesystem;
 
 void write_morse_outputs(const Grid& g,
                                 const std::vector<double>& U_true,
-                                int gamma, int first, const fs::path& out)
+                                double gamma, int first,
+                                const fs::path& out,
+                                bool quiet)
 {
     std::error_code ec;
     fs::create_directories(out, ec);
@@ -23,18 +25,24 @@ void write_morse_outputs(const Grid& g,
     Eigen::MatrixXd EV_true    = es_true.eigenvectors();
     renormalize_eigenvectors(EV_true, g.dx);
 
-    std::cout << "# Grid: N="<<g.N<<" xmax="<<g.xmax<<" dx="<<g.dx<<"\n";
-    std::cout << "# Morse gamma="<<gamma<<"  (n_max="<<morse_nmax(gamma)<<")\n\n";
+    if (!quiet) {
+        std::cout << "# Grid: N="<<g.N<<" xmax="<<g.xmax<<" dx="<<g.dx<<"\n";
+        std::cout << "# Morse gamma="<<gamma<<"  (n_max="<<morse_nmax(gamma)<<")\n\n";
+    }
 
     int show = std::min(first, (int)Evals_true.size());
     auto Eanal = morse_energies(gamma, show);
     std::vector<double> Eval_num(show);
     for (int i=0;i<show;i++) Eval_num[i] = Evals_true(i);
-    print_energy_table(Eval_num, Eanal, show);
+    if (!quiet) {
+        print_energy_table(Eval_num, Eanal, show);
+    }
 
     Eigen::MatrixXd G = (EV_true.transpose() * (g.dx * EV_true));
     double max_dev = (G - Eigen::MatrixXd::Identity(G.rows(), G.cols())).cwiseAbs().maxCoeff();
-    std::cout << "# Orthonorm check (max |G-I|): " << max_dev << "\n";
+    if (!quiet) {
+        std::cout << "# Orthonorm check (max |G-I|): " << max_dev << "\n";
+    }
 
     std::vector<double> xv(g.N), Uv(g.N);
     for (int i=0;i<g.N;i++){ xv[i]=g.x[i]; Uv[i]=U_true[i]; }
@@ -52,5 +60,7 @@ void write_morse_outputs(const Grid& g,
     auto Eanal_all = morse_energies(gamma, morse_nmax(gamma)+1);
     save_vector_csv(out / "morse_energies_anal.csv", Eanal_all, "E_anal");
 
-    std::cout << "# Morse: morse_* files (re)written in " << out.string() << "\n";
+    if (!quiet) {
+        std::cout << "# Morse: morse_* files (re)written in " << out.string() << "\n";
+    }
 }

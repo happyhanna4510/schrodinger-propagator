@@ -26,6 +26,6 @@ foreach ($K in $Ks) {
         --gamma $gamma --N $N --xmax $xmax --Umax $Umax `
         --evolve taylor --K $K --dt $dt --tmax $tmax `
         --log $logEvery --csv $csv `
-        --no_wide no-wide
+        --no_wide
     }
 }

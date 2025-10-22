@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <filesystem>
+#include <fstream>
 #include <sstream>
 #include "grid.hpp"
 #include "cli.hpp"
@@ -69,6 +70,11 @@ private:
     fs::path parent_;
     std::string stem_;
     fs::path p_abs_, p_re_, p_im_;
-    bool wrote_abs_ = false, wrote_re_ = false, wrote_im_ = false;
+    std::ofstream f_abs_;
+    std::ofstream f_re_;
+    std::ofstream f_im_;
+    bool wrote_abs_ = false;
+    bool wrote_re_ = false;
+    bool wrote_im_ = false;
 };
 } // namespace io

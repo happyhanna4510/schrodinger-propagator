@@ -1,17 +1,18 @@
+# Windows (PowerShell)
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release 
+cmake --build build --config Release
 
+powershell -ExecutionPolicy Bypass -File scripts/run_series.ps1
+python .\scripts\plot_taylor.py --glob "results/taylor_K*_dt*.csv" --split_by_K
+python .\scripts\plot_psi_wide.py
 
+# Windows: Morse static plots
 python .\scripts\plot_morse.py --gamma 10 --xmax 30 --ymin -0.05 --ymax 1.2
 
-powershell -ExecutionPolicy Bypass -File scripts/run_series.ps1   
+# Linux / macOS (bash)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
 
-
-python scripts/plot_psi_wide.py
-
-python scripts/plot_taylor.py --glob "results/taylor_K*_dt1e-6_g10_N2001_x30.csv" --no_show   
-
-
-python scripts/plot_taylor.py --glob ".\results\taylor_K4_dt*.csv"
-
-python scripts/plot_taylor.py --glob "results/taylor_K*_dt*.csv" --split_by_K
+./build/morse --gamma 10 --N 2001 --xmax 30 --evolve taylor --dt 1e-5 --tmax 1e-3 --log 5000 --no_wide --quiet
+python3 scripts/plot_taylor.py --glob "results/taylor_K*_dt*.csv" --split_by_K --no_show
+python3 scripts/plot_psi_wide.py --glob "results/*_abs2_wide.csv" --no_show

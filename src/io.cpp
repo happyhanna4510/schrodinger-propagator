@@ -113,6 +113,36 @@ static std::string fmt_dt_for_filename(double dt) {
 namespace io {
 namespace fs = std::filesystem;
 
+namespace {
+
+void write_wide_header(std::ofstream& f, const std::vector<double>& x) {
+    f << "t";
+    for (double xi : x) {
+        f << ',' << xi;
+    }
+    f << '\n';
+}
+
+void write_abs2_row(std::ofstream& f, const Eigen::VectorXcd& psi, double t) {
+    f << t;
+    for (int i = 0; i < psi.size(); ++i) {
+        const double re = psi[i].real();
+        const double im = psi[i].imag();
+        f << ',' << (re * re + im * im);
+    }
+    f << '\n';
+}
+
+void write_component_row(std::ofstream& f, const Eigen::VectorXcd& psi, double t, bool real_part) {
+    f << t;
+    for (int i = 0; i < psi.size(); ++i) {
+        f << ',' << (real_part ? psi[i].real() : psi[i].imag());
+    }
+    f << '\n';
+}
+
+} // namespace
+
 // РЕАЛИЗАЦИЯ (без inline)
 fs::path make_csv_path(const fs::path& out_dir,
                        const Params& P,
@@ -142,28 +172,77 @@ WideDump::WideDump(const fs::path& csv_path,
                    bool write_re, bool write_im)
 : x_inner_(x_inner), write_re_(write_re), write_im_(write_im)
 {
-    if (!x_inner_) return;
+    if (!x_inner_) {
+        return;
+    }
+
     parent_ = csv_path.parent_path();
+    if (!parent_.empty()) {
+        std::error_code ec;
+        fs::create_directories(parent_, ec);
+    }
+
     stem_   = csv_path.stem().string();
     p_abs_  = parent_ / (stem_ + "_abs2_wide.csv");
-    if (write_re_) p_re_ = parent_ / (stem_ + "_re_wide.csv");
-    if (write_im_) p_im_ = parent_ / (stem_ + "_im_wide.csv");
-}
+    p_re_   = parent_ / (stem_ + "_re_wide.csv");
+    p_im_   = parent_ / (stem_ + "_im_wide.csv");
 
-// Метод write — РЕАЛИЗАЦИЯ
-void WideDump::write(const Eigen::VectorXcd& psi, double t) {
-    if (!enabled()) return;
-
-    ::append_abs2_wide(p_abs_, *x_inner_, psi, t, !wrote_abs_);
-    wrote_abs_ = true;
+    f_abs_.open(p_abs_, std::ios::out | std::ios::trunc);
+    if (!f_abs_) {
+        std::wcerr << L"[io] cannot open wide file: " << p_abs_.wstring() << std::endl;
+        x_inner_ = nullptr;
+        write_re_ = false;
+        write_im_ = false;
+        return;
+    }
+    f_abs_ << std::setprecision(16);
 
     if (write_re_) {
-        ::append_re_wide(p_re_, *x_inner_, psi, t, !wrote_re_);
-        wrote_re_ = true;
+        f_re_.open(p_re_, std::ios::out | std::ios::trunc);
+        if (!f_re_) {
+            std::wcerr << L"[io] cannot open wide file: " << p_re_.wstring() << std::endl;
+            write_re_ = false;
+        } else {
+            f_re_ << std::setprecision(16);
+        }
     }
+
     if (write_im_) {
-        ::append_im_wide(p_im_, *x_inner_, psi, t, !wrote_im_);
-        wrote_im_ = true;
+        f_im_.open(p_im_, std::ios::out | std::ios::trunc);
+        if (!f_im_) {
+            std::wcerr << L"[io] cannot open wide file: " << p_im_.wstring() << std::endl;
+            write_im_ = false;
+        } else {
+            f_im_ << std::setprecision(16);
+        }
+    }
+}
+
+void WideDump::write(const Eigen::VectorXcd& psi, double t) {
+    if (!enabled()) {
+        return;
+    }
+
+    if (!wrote_abs_) {
+        write_wide_header(f_abs_, *x_inner_);
+        wrote_abs_ = true;
+    }
+    write_abs2_row(f_abs_, psi, t);
+
+    if (write_re_) {
+        if (!wrote_re_) {
+            write_wide_header(f_re_, *x_inner_);
+            wrote_re_ = true;
+        }
+        write_component_row(f_re_, psi, t, true);
+    }
+
+    if (write_im_) {
+        if (!wrote_im_) {
+            write_wide_header(f_im_, *x_inner_);
+            wrote_im_ = true;
+        }
+        write_component_row(f_im_, psi, t, false);
     }
 }
 
