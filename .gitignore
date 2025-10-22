@@ -41,8 +41,13 @@ Thumbs.db
 *.tmp
 
 # Results, figures, notebooks cache
-/results/*.csv
-/figures/*.png
+# Держим папки, игнорим их содержимое
+results/**
+!results/.gitkeep
+
+figures/**
+!figures/.gitkeep
+
 .ipynb_checkpoints/
 
 # Python
