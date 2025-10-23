@@ -27,8 +27,8 @@ struct Params {
     bool no_wide     = false;   // не писать psi_*_wide.csv
     bool wide_re     = false;   // писать Re[psi] в wide CSV
     bool wide_im     = false;   // писать Im[psi] в wide CSV
-    bool log_p0      = true;    // добавлять колонку p0 в лог
-    bool log_err_exact = true;  // добавлять колонку err_exact
+    bool log_p0      = false;    //не добавлять колонку p0 в лог
+    bool log_err_exact = false;  // не добавлять колонку err_exact
 
 };
 

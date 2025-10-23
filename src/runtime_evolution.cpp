@@ -1,37 +1,26 @@
-#include "taylor.hpp"
+#include "runtime_evolution.hpp"
 
-#include <Eigen/Core>
 #include <Eigen/Dense>
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
-#include <stdexcept>
+#include <string>
+#include <vector>
 
-#include "evolve.hpp"
+#include "core/io_utils.hpp"
+#include "core/math_utils.hpp"
+#include "core/spectral.hpp"
+#include "evolve/evolve_factory.hpp"
 #include "hamiltonian.hpp"
 #include "initial.hpp"
 #include "io.hpp"
-
-#include "core/math_utils.hpp"
-#include "core/spectral.hpp"
+#include "test_time_reversibility.hpp"
 
 namespace fs = std::filesystem;
-
-Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H) {
-    const int M = static_cast<int>(H.rows());
-    const int off_size = std::max(0, M - 1);
-    Tridiag T{Eigen::VectorXd(M), Eigen::VectorXd(off_size), Eigen::VectorXd(off_size)};
-    T.a = H.diagonal();
-    if (off_size > 0) {
-        T.b = H.diagonal(1);
-        T.c = H.diagonal(-1);
-    }
-    return T;
-}
 
 fs::path run_time_evolution(const Grid& g,
                             const std::vector<double>& U_true,
@@ -53,7 +42,7 @@ fs::path run_time_evolution(const Grid& g,
     Eigen::MatrixXd H_evol = build_hamiltonian(g, U_evol);
     Tridiag T = make_tridiag_from_dense(H_evol);
 
-    Eigen::VectorXcd psi_init = gaussian_on_inner(g, 1.0, 0.35).cast<cplx>();
+    Eigen::VectorXcd psi_init = gaussian_on_inner(g, 1.0, 0.35).cast<std::complex<double>>();
 
     int    K      = (P.K > 0 ? P.K : 4);
     double dt     = (P.dt > 0 ? P.dt : 1e-6);
@@ -146,3 +135,4 @@ fs::path run_taylor_evolution(const Grid& g,
     P_taylor.evolve_method = "taylor";
     return run_time_evolution(g, U_true, P_taylor, out_dir);
 }
+

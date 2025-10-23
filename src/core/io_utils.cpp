@@ -1,4 +1,4 @@
-#include "io_utils.hpp"
+#include "core/io_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -8,7 +8,8 @@
 #include <iostream>
 #include <sstream>
 
-#include "math_utils.hpp"
+#include "core/math_utils.hpp"
+#include "core/spectral.hpp"
 
 namespace {
 constexpr std::complex<double> I(0.0, 1.0);
@@ -116,3 +117,4 @@ void print_snapshot(const LogSnapshot& snap,
 
     std::cout << line.str() << '\n';
 }
+
