@@ -90,11 +90,11 @@ void evolve_rk4_tridiag(const Tridiag& T,
         sum.noalias() += k4;
         psi.noalias() += (dt / 6.0) * sum;
 
-        double norm = l2_norm(psi, dx);
+        /*double norm = l2_norm(psi, dx);
         if (norm > 0.0) {
             psi /= norm;
         }
-
+*/
         t += dt;
     }
 }
