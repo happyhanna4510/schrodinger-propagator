@@ -49,6 +49,7 @@ namespace fs = std::filesystem;
 // ТОЛЬКО объявление (без inline и без тела)
 fs::path make_csv_path(const fs::path& out_dir,
                        const Params& P,
+                       const std::string& method,
                        int K, double dt,
                        const Grid& g);
 

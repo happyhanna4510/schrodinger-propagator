@@ -146,6 +146,7 @@ void write_component_row(std::ofstream& f, const Eigen::VectorXcd& psi, double t
 // РЕАЛИЗАЦИЯ (без inline)
 fs::path make_csv_path(const fs::path& out_dir,
                        const Params& P,
+                       const std::string& method,
                        int K, double dt,
                        const Grid& g)
 {
@@ -157,13 +158,21 @@ fs::path make_csv_path(const fs::path& out_dir,
         return os.str();
     };
 
-    return !P.csv_name.empty()
-        ? out_dir / P.csv_name
-        : out_dir / ("taylor_K" + std::to_string(K) +
-                     "_dt" + fmt_dt_for_filename(dt) +
-                     "_g"  + fmtg(P.gamma) +
-                     "_N"  + std::to_string(g.N) +
-                     "_x"  + fmtg(g.xmax) + ".csv");
+    if (!P.csv_name.empty()) {
+        return out_dir / P.csv_name;
+    }
+
+    std::ostringstream stem;
+    stem << method;
+    if (method == "taylor") {
+        stem << "_K" << K;
+    }
+    stem << "_dt" << fmt_dt_for_filename(dt)
+         << "_g"  << fmtg(P.gamma)
+         << "_N"  << std::to_string(g.N)
+         << "_x"  << fmtg(g.xmax);
+
+    return out_dir / (stem.str() + ".csv");
 }
 
 // Конструктор WideDump — РЕАЛИЗАЦИЯ

@@ -27,12 +27,12 @@ int main(int argc, char** argv) {
 
     if (!P.do_evolve) {
         if (!P.quiet) {
-            std::cout << "# No evolution (use --evolve [taylor])\n";
+            std::cout << "# No evolution (use --evolve [taylor|rk4])\n";
         }
         return 0;
     }
 
-    fs::path csv_path = run_taylor_evolution(g, U_true, P, out);
+    fs::path csv_path = run_time_evolution(g, U_true, P, out);
     if (!P.quiet) {
         std::cout << "# log saved to: " << csv_path.string() << "\n";
     }

@@ -32,8 +32,14 @@ constexpr inline bool has(LogExtras e, LogExtras bit) {
     return (static_cast<unsigned>(e) & static_cast<unsigned>(bit)) != 0u;
 }
 
-// Запускает эволюцию Тейлора и пишет логи/wide.
+// Запускает эволюцию указанным методом (по умолчанию Тейлор) и пишет логи/wide.
 // Возвращает путь к файлу лога CSV.
+std::filesystem::path run_time_evolution(const Grid& g,
+                                         const std::vector<double>& U_true,
+                                         const Params& P,
+                                         const std::filesystem::path& out_dir);
+
+// Обёртка, принудительно запускающая эволюцию методом Тейлора.
 std::filesystem::path run_taylor_evolution(const Grid& g,
                                            const std::vector<double>& U_true,
                                            const Params& P,

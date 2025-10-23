@@ -10,6 +10,12 @@ include(CTest)
 set(SOURCES
     src/cli.cpp
     src/grid.cpp
+    src/core/io_utils.cpp
+    src/core/math_utils.cpp
+    src/core/spectral.cpp
+    src/evolve/evolve_factory.cpp
+    src/evolve/evolve_rk4.cpp
+    src/evolve/evolve_taylor.cpp
     src/hamiltonian.cpp
     src/initial.cpp
     src/io.cpp
