@@ -1,6 +1,9 @@
-#include "evolve.hpp"
+#include "evolve/evolve_factory.hpp"
 
 #include <stdexcept>
+
+#include "evolve/evolve_rk4.hpp"
+#include "evolve/evolve_taylor.hpp"
 
 void evolve(const std::string& method,
             const Tridiag& T,
@@ -37,3 +40,4 @@ void evolve(const std::string& method,
 
     throw std::runtime_error("unknown evolution method: " + method);
 }
+

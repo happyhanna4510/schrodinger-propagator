@@ -1,4 +1,4 @@
-#include "evolve.hpp"
+#include "evolve/evolve_rk4.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,10 +6,8 @@
 #include <fstream>
 #include <stdexcept>
 
+#include "core/math_utils.hpp"
 #include "io.hpp"
-
-#include "../core/io_utils.hpp"
-#include "../core/math_utils.hpp"
 
 namespace {
 constexpr std::complex<double> I(0.0, 1.0);
@@ -100,3 +98,4 @@ void evolve_rk4_tridiag(const Tridiag& T,
         t += dt;
     }
 }
+

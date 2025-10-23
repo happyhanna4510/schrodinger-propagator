@@ -24,8 +24,9 @@ set(SOURCES
     src/morse_potential.cpp
     src/morse_static.cpp
     src/paths.cpp
-    src/snapshots.cpp
-    src/taylor.cpp)
+    src/reversibility.cpp
+    src/runtime_evolution.cpp
+    src/snapshots.cpp)
 
 add_executable(morse ${SOURCES})
 

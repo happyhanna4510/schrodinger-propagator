@@ -4,9 +4,18 @@
 
 #include <iosfwd>
 
-#include "taylor.hpp"
+enum class LogExtras : unsigned {
+    None   = 0u,
+    P0     = 1u << 0,
+    ErrPhi = 1u << 1,
+    Both   = static_cast<unsigned>(P0) | static_cast<unsigned>(ErrPhi)
+};
 
-#include "spectral.hpp"
+constexpr inline bool has(LogExtras e, LogExtras bit) {
+    return (static_cast<unsigned>(e) & static_cast<unsigned>(bit)) != 0u;
+}
+
+struct SpectralData;
 
 struct LogSnapshot {
     int    step = 0;
@@ -34,3 +43,4 @@ LogSnapshot collect_snapshot(const SpectralData& spectral,
 void write_csv_header(std::ofstream& f, LogExtras extras);
 void write_csv_row(std::ofstream& f, const LogSnapshot& snap, LogExtras extras);
 void print_snapshot(const LogSnapshot& snap, LogExtras extras);
+

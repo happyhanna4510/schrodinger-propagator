@@ -1,8 +1,21 @@
-#include "math_utils.hpp"
+#include "core/math_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <iostream>
+
+Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H) {
+    const int M = static_cast<int>(H.rows());
+    const int off_size = std::max(0, M - 1);
+    Tridiag T{Eigen::VectorXd(M), Eigen::VectorXd(off_size), Eigen::VectorXd(off_size)};
+    T.a = H.diagonal();
+    if (off_size > 0) {
+        T.b = H.diagonal(1);
+        T.c = H.diagonal(-1);
+    }
+    return T;
+}
 
 double l2_norm_sq(const Eigen::VectorXcd& v, double dx) {
     long double sum = 0.0L;
@@ -66,3 +79,4 @@ void maybe_warn_timestep(double dt, double dE, bool quiet) {
                   << ": consider reducing dt or increasing K for stability\n";
     }
 }
+

@@ -20,3 +20,4 @@ private:
     Eigen::VectorXcd vk_;
     Eigen::VectorXcd tmp_;
 };
+

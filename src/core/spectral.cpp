@@ -1,4 +1,4 @@
-#include "spectral.hpp"
+#include "core/spectral.hpp"
 
 #include <Eigen/Eigenvalues>
 
@@ -35,3 +35,4 @@ SpectralData make_spectral_data(const Eigen::MatrixXd& H,
 
     return data;
 }
+

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Eigen/Core>
 #include <Eigen/Dense>
 
 struct SpectralData {
@@ -14,3 +13,4 @@ struct SpectralData {
 SpectralData make_spectral_data(const Eigen::MatrixXd& H,
                                 const Eigen::VectorXcd& psi_init,
                                 double dx);
+
