@@ -45,8 +45,8 @@ Params parse_args(int argc, char** argv) {
         else if (s == "--dt")       getd(i, p.dt);
         else if (s == "--tmax")     getd(i, p.tmax);
         else if (s == "--K")        geti(i, p.K);
-        else if (s == "--log")      geti(i, p.log_every);
-        else if (s == "--csv-every") geti(i, p.csv_every);
+        else if (s == "--log" || s == "--log-every") geti(i, p.log_every);
+        else if (s == "--flush-every") geti(i, p.flush_every);
 
         else if (s == "--csv") {
             if (i + 1 < argc) p.csv_name = argv[++i];

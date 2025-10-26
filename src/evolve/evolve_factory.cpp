@@ -6,6 +6,7 @@
 #include <cmath>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -21,7 +22,7 @@ namespace {
 struct IntervalAgg {
     int count = 0;
     double sum_ms = 0.0;
-    long long sum_matvecs = 0;
+    double sum_matvecs = 0.0;
     double max_norm_err = 0.0;
     double last_dt_ms = 0.0;
     double last_matvecs = 0.0;
@@ -44,7 +45,7 @@ void reset_interval(IntervalAgg& agg) {
 
 void update_interval(IntervalAgg& agg,
                      double dt_ms,
-                     int matvecs,
+                     double matvecs,
                      double norm_err,
                      const StepResult& result) {
     ++agg.count;
@@ -80,7 +81,10 @@ bool should_tick(int every, int step, int total_steps) {
     if (every <= 0) {
         return false;
     }
-    if (step == 1 || step == total_steps) {
+    if (step == 0) {
+        return true;
+    }
+    if (step + 1 == total_steps) {
         return true;
     }
     return (step % every) == 0;
@@ -117,8 +121,8 @@ void evolve(const std::string& method,
             bool wide_im,
             bool quiet,
             int log_every,
-            int csv_every,
-            bool aggregate) {
+            bool aggregate,
+            int flush_every) {
     const std::string method_norm = normalize_method(method);
     const bool is_cheb = (method_norm == "cheb");
 
@@ -129,8 +133,8 @@ void evolve(const std::string& method,
     cfg.hbar = 1.0;
     cfg.tolerance = 1e-12;
     cfg.log_every = log_every;
-    cfg.csv_every = csv_every;
     cfg.aggregate = aggregate;
+    cfg.flush_every = flush_every;
 
     std::unique_ptr<EvolverBase> evolver;
 
@@ -145,6 +149,7 @@ void evolve(const std::string& method,
     }
 
     std::ofstream csv;
+    int csv_rows = 0;
     if (!csv_path.empty()) {
         csv.open(csv_path, std::ios::out | std::ios::trunc);
         if (!csv) {
@@ -158,10 +163,9 @@ void evolve(const std::string& method,
     Eigen::VectorXcd psi = psi_init;
     double t = 0.0;
 
-    IntervalAgg console_agg;
-    IntervalAgg csv_agg;
+    IntervalAgg agg;
 
-    for (int step = 1; step <= nsteps; ++step) {
+    for (int step = 0; step < nsteps; ++step) {
         const auto start = std::chrono::steady_clock::now();
         StepResult result = evolver->step(psi);
         const auto end = std::chrono::steady_clock::now();
@@ -172,38 +176,30 @@ void evolve(const std::string& method,
         const double norm_sq = l2_norm_sq(psi, dx);
         const double norm_err = std::abs(norm_sq - 1.0);
 
-        update_interval(console_agg, dt_ms, result.matvecs, norm_err, result);
-        if (csv.is_open()) {
-            update_interval(csv_agg, dt_ms, result.matvecs, norm_err, result);
-        }
+        update_interval(agg, dt_ms, static_cast<double>(result.matvecs), norm_err, result);
 
-        const bool console_tick = should_tick(cfg.log_every, step, nsteps);
-        const bool csv_tick = csv.is_open() && should_tick(cfg.csv_every, step, nsteps);
-        const bool need_metrics = csv_tick || (!quiet && console_tick);
+        const bool tick = should_tick(cfg.log_every, step, nsteps);
+        if (tick) {
+            IntervalStats stats = finalize_interval(agg, cfg.aggregate);
+            const double theta = compute_theta(spectral, psi, t, dx);
+            const int step_out = step + 1;
 
-        StepMetrics metrics_current{};
-        if (need_metrics) {
-            metrics_current = compute_step_metrics(spectral, psi, t, dx);
-        }
-
-        if (csv_tick) {
-            IntervalStats stats = finalize_interval(csv_agg, cfg.aggregate);
-            StepMetrics metrics_csv = metrics_current;
-            metrics_csv.norm_err = stats.norm_err;
-            write_step_csv_row(csv, method_norm, step, t, dt, stats.dt_ms,
-                               stats.matvecs, metrics_csv, stats.K_used, stats.bn_ratio, is_cheb);
-            reset_interval(csv_agg);
-        }
-
-        if (console_tick) {
-            IntervalStats stats = finalize_interval(console_agg, cfg.aggregate);
-            if (!quiet) {
-                StepMetrics metrics_console = metrics_current;
-                metrics_console.norm_err = stats.norm_err;
-                print_step_console(method_norm, step, t, stats.dt_ms, stats.matvecs,
-                                   metrics_console, stats.K_used);
+            if (csv.is_open()) {
+                write_step_csv_row(csv, method_norm, step_out, t, dt, stats.dt_ms,
+                                   stats.matvecs, stats.norm_err, theta,
+                                   stats.K_used, stats.bn_ratio, is_cheb);
+                ++csv_rows;
+                if (cfg.flush_every > 0 && (csv_rows % cfg.flush_every) == 0) {
+                    csv.flush();
+                }
             }
-            reset_interval(console_agg);
+
+            if (!quiet) {
+                print_step_console(method_norm, step_out, t, stats.dt_ms, stats.matvecs,
+                                   stats.norm_err, theta, stats.K_used);
+            }
+
+            reset_interval(agg);
         }
 
         if (wide.enabled()) {

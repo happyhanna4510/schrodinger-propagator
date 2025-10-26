@@ -11,10 +11,10 @@ struct EvolverConfig {
     double dx        = 0.0;
     double hbar      = 1.0;
     double tolerance = 1e-12;
-    int    K         = 0;
-    int    log_every = 10000;
-    int    csv_every = 1;
-    bool   aggregate = true;
+    int    K           = 0;
+    int    log_every   = 10000;
+    bool   aggregate   = true;
+    int    flush_every = 1000;
 };
 
 struct StepResult {

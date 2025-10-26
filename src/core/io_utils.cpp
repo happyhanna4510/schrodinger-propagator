@@ -26,24 +26,18 @@ std::string format_matvecs(double value) {
 }
 }
 
-StepMetrics compute_step_metrics(const SpectralData& spectral,
-                                 const Eigen::VectorXcd& psi,
-                                 double t,
-                                 double dx) {
-    StepMetrics metrics;
-    metrics.norm = l2_norm_sq(psi, dx);
-    metrics.norm_err = std::abs(metrics.norm - 1.0);
-
+double compute_theta(const SpectralData& spectral,
+                     const Eigen::VectorXcd& psi,
+                     double t,
+                     double dx) {
     Eigen::ArrayXcd phase = (-I * spectral.evals.array() * t).exp();
     Eigen::VectorXcd coeff_exact = (spectral.coeffs0.array() * phase).matrix();
     Eigen::VectorXcd coeff_num = dx * spectral.eigenvectors.adjoint() * psi;
-    metrics.theta = (coeff_exact - coeff_num).squaredNorm();
-
-    return metrics;
+    return (coeff_exact - coeff_num).squaredNorm();
 }
 
 void write_step_csv_header(std::ofstream& f, bool include_cheb_extras) {
-    f << "method,step,t,dt,dt_ms,matvecs,norm,norm_err,theta";
+    f << "method,step,t,dt,dt_ms,matvecs,norm_err,theta";
     if (include_cheb_extras) {
         f << ",K_used,bn_ratio";
     }
@@ -57,7 +51,8 @@ void write_step_csv_row(std::ofstream& f,
                         double dt,
                         double dt_ms,
                         double matvecs,
-                        const StepMetrics& metrics,
+                        double norm_err,
+                        double theta,
                         std::optional<int> K_used,
                         std::optional<double> bn_ratio,
                         bool include_cheb_extras) {
@@ -68,9 +63,8 @@ void write_step_csv_row(std::ofstream& f,
         << std::setprecision(15) << std::defaultfloat << dt << ','
         << std::fixed << std::setprecision(3) << dt_ms << ','
         << std::defaultfloat << matvecs << ','
-        << std::setprecision(15) << metrics.norm << ','
-        << std::scientific << std::setprecision(6) << metrics.norm_err << ','
-        << std::scientific << std::setprecision(6) << metrics.theta;
+        << std::scientific << std::setprecision(6) << norm_err << ','
+        << std::scientific << std::setprecision(6) << theta;
 
     if (include_cheb_extras) {
         if (K_used) {
@@ -94,7 +88,8 @@ void print_step_console(const std::string& method,
                         double t,
                         double dt_ms,
                         double matvecs,
-                        const StepMetrics& metrics,
+                        double norm_err,
+                        double theta,
                         std::optional<int> K_used) {
     std::ostringstream line;
     line << '[' << method << "] "
@@ -102,8 +97,8 @@ void print_step_console(const std::string& method,
          << " t=" << std::fixed << std::setprecision(6) << t
          << "  dt_ms=" << std::fixed << std::setprecision(3) << dt_ms
          << "  matvecs=" << format_matvecs(matvecs)
-         << "  norm_err=" << std::scientific << std::setprecision(3) << metrics.norm_err
-         << "  theta=" << std::scientific << std::setprecision(3) << metrics.theta;
+         << "  norm_err=" << std::scientific << std::setprecision(3) << norm_err
+         << "  theta=" << std::scientific << std::setprecision(3) << theta;
 
     if (K_used) {
         line << "  K=" << *K_used;

@@ -13,9 +13,9 @@ struct Params {
     int    K         = 4;
     double dt        = 1e-5;
     double tmax      = 10.0;
-    int    log_every = 10000;
-    int    csv_every = 1;
-    bool   aggregate = true;
+    int    log_every  = 10000;
+    bool   aggregate  = true;
+    int    flush_every = 1000;
 
     // выводы
     int    first     = 10;

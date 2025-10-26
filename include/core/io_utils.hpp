@@ -8,16 +8,10 @@
 
 #include "core/spectral.hpp"
 
-struct StepMetrics {
-    double norm = 0.0;
-    double norm_err = 0.0;
-    double theta = 0.0;
-};
-
-StepMetrics compute_step_metrics(const SpectralData& spectral,
-                                 const Eigen::VectorXcd& psi,
-                                 double t,
-                                 double dx);
+double compute_theta(const SpectralData& spectral,
+                     const Eigen::VectorXcd& psi,
+                     double t,
+                     double dx);
 
 void write_step_csv_header(std::ofstream& f, bool include_cheb_extras);
 
@@ -28,7 +22,8 @@ void write_step_csv_row(std::ofstream& f,
                         double dt,
                         double dt_ms,
                         double matvecs,
-                        const StepMetrics& metrics,
+                        double norm_err,
+                        double theta,
                         std::optional<int> K_used,
                         std::optional<double> bn_ratio,
                         bool include_cheb_extras);
@@ -38,6 +33,7 @@ void print_step_console(const std::string& method,
                         double t,
                         double dt_ms,
                         double matvecs,
-                        const StepMetrics& metrics,
+                        double norm_err,
+                        double theta,
                         std::optional<int> K_used);
 
