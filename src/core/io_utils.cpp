@@ -2,15 +2,28 @@
 
 #include <algorithm>
 #include <complex>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 #include "core/math_utils.hpp"
 
 namespace {
 constexpr std::complex<double> I(0.0, 1.0);
+
+std::string format_matvecs(double value) {
+    std::ostringstream oss;
+    const double rounded = std::round(value);
+    if (std::abs(value - rounded) < 1e-9) {
+        oss << static_cast<long long>(std::llround(rounded));
+    } else {
+        oss << std::fixed << std::setprecision(3) << value;
+    }
+    return oss.str();
+}
 }
 
 StepMetrics compute_step_metrics(const SpectralData& spectral,
@@ -43,7 +56,7 @@ void write_step_csv_row(std::ofstream& f,
                         double t,
                         double dt,
                         double dt_ms,
-                        int matvecs,
+                        double matvecs,
                         const StepMetrics& metrics,
                         std::optional<int> K_used,
                         std::optional<double> bn_ratio,
@@ -80,7 +93,7 @@ void print_step_console(const std::string& method,
                         int step,
                         double t,
                         double dt_ms,
-                        int matvecs,
+                        double matvecs,
                         const StepMetrics& metrics,
                         std::optional<int> K_used) {
     std::ostringstream line;
@@ -88,7 +101,7 @@ void print_step_console(const std::string& method,
          << "step=" << step
          << " t=" << std::fixed << std::setprecision(6) << t
          << "  dt_ms=" << std::fixed << std::setprecision(3) << dt_ms
-         << "  matvecs=" << matvecs
+         << "  matvecs=" << format_matvecs(matvecs)
          << "  norm_err=" << std::scientific << std::setprecision(3) << metrics.norm_err
          << "  theta=" << std::scientific << std::setprecision(3) << metrics.theta;
 

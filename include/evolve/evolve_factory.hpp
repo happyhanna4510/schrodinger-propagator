@@ -20,5 +20,8 @@ void evolve(const std::string& method,
             const std::vector<double>* x_inner,
             bool wide_re,
             bool wide_im,
-            bool quiet);
+            bool quiet,
+            int log_every,
+            int csv_every,
+            bool aggregate);
 

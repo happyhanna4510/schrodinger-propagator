@@ -46,6 +46,7 @@ Params parse_args(int argc, char** argv) {
         else if (s == "--tmax")     getd(i, p.tmax);
         else if (s == "--K")        geti(i, p.K);
         else if (s == "--log")      geti(i, p.log_every);
+        else if (s == "--csv-every") geti(i, p.csv_every);
 
         else if (s == "--csv") {
             if (i + 1 < argc) p.csv_name = argv[++i];
@@ -64,6 +65,7 @@ Params parse_args(int argc, char** argv) {
         else if (s == "--no-log-err" || s == "--no-log-exact") p.log_err_exact = false;
         else if (s == "--log-basic") { p.log_p0 = false; p.log_err_exact = false; }
         else if (s == "--log-all")   { p.log_p0 = true;  p.log_err_exact = true; }
+        else if (s == "--no-aggregate") p.aggregate = false;
 
         else {
             std::cerr << "warning: unknown option: " << s << "\n";

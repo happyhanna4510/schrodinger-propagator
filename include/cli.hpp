@@ -14,6 +14,8 @@ struct Params {
     double dt        = 1e-5;
     double tmax      = 10.0;
     int    log_every = 10000;
+    int    csv_every = 1;
+    bool   aggregate = true;
 
     // выводы
     int    first     = 10;
