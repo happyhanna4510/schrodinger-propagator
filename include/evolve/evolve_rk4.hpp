@@ -2,24 +2,19 @@
 
 #include <Eigen/Core>
 
-#include <string>
-#include <vector>
+#include "evolve/evolver_base.hpp"
 
-#include "core/io_utils.hpp"
-#include "core/spectral.hpp"
-#include "core/tridiag.hpp"
+class Rk4Evolver : public EvolverBase {
+public:
+    Rk4Evolver(const Tridiag& T, const EvolverConfig& cfg);
 
-void evolve_rk4_tridiag(const Tridiag& T,
-                        const SpectralData& spectral,
-                        const Eigen::VectorXcd& psi_init,
-                        double dx,
-                        double dt,
-                        int nsteps,
-                        int log_every,
-                        const std::string& csv_path,
-                        const std::vector<double>* x_inner,
-                        bool wide_re,
-                        bool wide_im,
-                        LogExtras extras,
-                        bool quiet);
+    StepResult step(Eigen::VectorXcd& psi) override;
+
+private:
+    Eigen::VectorXcd k1_;
+    Eigen::VectorXcd k2_;
+    Eigen::VectorXcd k3_;
+    Eigen::VectorXcd k4_;
+    Eigen::VectorXcd tmp_;
+};
 

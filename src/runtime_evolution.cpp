@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include "core/io_utils.hpp"
 #include "core/math_utils.hpp"
 #include "core/spectral.hpp"
 #include "evolve/evolve_factory.hpp"
@@ -48,7 +47,6 @@ fs::path run_time_evolution(const Grid& g,
     double dt     = (P.dt > 0 ? P.dt : 1e-6);
     double tmax   = (P.tmax > 0 ? P.tmax : 1e-3);
     int    nsteps = static_cast<int>(std::llround(tmax / dt));
-    int    log_every = (P.log_every > 0 ? P.log_every : 100);
     const std::string method = P.evolve_method.empty() ? std::string("taylor") : P.evolve_method;
 
     fs::create_directories(out_dir);
@@ -77,6 +75,7 @@ fs::path run_time_evolution(const Grid& g,
     }
     maybe_warn_timestep(dt, dE, P.quiet);
 
+#if 0
     if (method == "taylor") {
         RevTestResult rt = test_time_reversibility(T, psi_init, g.dx, dt, nsteps, K);
         if (!P.quiet) {
@@ -95,6 +94,7 @@ fs::path run_time_evolution(const Grid& g,
         std::cout << "\n# Reversibility test is not implemented for method '"
                   << method << "'.\n";
     }
+#endif
 
     if (!P.quiet) {
         if (method == "taylor") {
@@ -106,19 +106,9 @@ fs::path run_time_evolution(const Grid& g,
         }
     }
 
-    LogExtras extras = LogExtras::None;
-    if (P.log_p0) {
-        extras = static_cast<LogExtras>(static_cast<unsigned>(extras) |
-                                        static_cast<unsigned>(LogExtras::P0));
-    }
-    if (P.log_err_exact) {
-        extras = static_cast<LogExtras>(static_cast<unsigned>(extras) |
-                                        static_cast<unsigned>(LogExtras::ErrPhi));
-    }
-
     evolve(method, T, spectral, psi_init, g.dx, dt, nsteps, K,
-           log_every, csv_path.string(), x_ptr,
-           P.wide_re, P.wide_im, extras, P.quiet);
+           csv_path.string(), x_ptr,
+           P.wide_re, P.wide_im, P.quiet);
 
     if (!P.quiet) {
         std::cout << "# log saved to: " << csv_path.string() << "\n";

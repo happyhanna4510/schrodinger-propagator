@@ -1,101 +1,56 @@
 #include "evolve/evolve_rk4.hpp"
 
-#include <algorithm>
-#include <cmath>
 #include <complex>
-#include <fstream>
-#include <stdexcept>
 
 #include "core/math_utils.hpp"
-#include "io.hpp"
 
 namespace {
 constexpr std::complex<double> I(0.0, 1.0);
 }
 
-// Runge–Kutta 4th order time propagation (ψ' = -i H ψ)
-void evolve_rk4_tridiag(const Tridiag& T,
-                        const SpectralData& spectral,
-                        const Eigen::VectorXcd& psi_init,
-                        double dx,
-                        double dt,
-                        int nsteps,
-                        int log_every,
-                        const std::string& csv_path,
-                        const std::vector<double>* x_inner,
-                        bool wide_re,
-                        bool wide_im,
-                        LogExtras extras,
-                        bool quiet) {
-    std::ofstream csv;
-    if (!csv_path.empty()) {
-        csv.open(csv_path, std::ios::out | std::ios::trunc);
-        if (!csv) {
-            throw std::runtime_error("failed to open log csv");
-        }
-        write_csv_header(csv, extras);
+Rk4Evolver::Rk4Evolver(const Tridiag& T, const EvolverConfig& cfg)
+    : EvolverBase(T, cfg) {
+    const Eigen::Index n = T.a.size();
+    k1_.resize(n);
+    k2_.resize(n);
+    k3_.resize(n);
+    k4_.resize(n);
+    tmp_.resize(n);
+}
+
+StepResult Rk4Evolver::step(Eigen::VectorXcd& psi) {
+    if (k1_.size() != psi.size()) {
+        const Eigen::Index n = psi.size();
+        k1_.resize(n);
+        k2_.resize(n);
+        k3_.resize(n);
+        k4_.resize(n);
+        tmp_.resize(n);
     }
 
-    io::WideDump wide(csv_path, x_inner, wide_re, wide_im);
+    tridiag_mul(T_, psi, k1_);
+    k1_ *= -I;
 
-    Eigen::VectorXcd psi = psi_init;
-    Eigen::VectorXcd k1(psi.size());
-    Eigen::VectorXcd k2(psi.size());
-    Eigen::VectorXcd k3(psi.size());
-    Eigen::VectorXcd k4(psi.size());
-    Eigen::VectorXcd tmp(psi.size());
+    tmp_ = psi + (0.5 * cfg_.dt) * k1_;
+    tridiag_mul(T_, tmp_, k2_);
+    k2_ *= -I;
 
-    double t = 0.0;
+    tmp_ = psi + (0.5 * cfg_.dt) * k2_;
+    tridiag_mul(T_, tmp_, k3_);
+    k3_ *= -I;
 
-    const double norm_sq0 = l2_norm_sq(psi_init, dx);
-    const double norm0 = std::sqrt(std::max(0.0, norm_sq0));
+    tmp_ = psi + cfg_.dt * k3_;
+    tridiag_mul(T_, tmp_, k4_);
+    k4_ *= -I;
 
-    for (int step = 0; step <= nsteps; ++step) {
-        if (log_every > 0 && step % log_every == 0) {
-            LogSnapshot snap = collect_snapshot(spectral, psi, t, dx, step, norm_sq0, norm0);
+    Eigen::VectorXcd sum = k1_;
+    sum.noalias() += 2.0 * k2_;
+    sum.noalias() += 2.0 * k3_;
+    sum.noalias() += k4_;
+    psi.noalias() += (cfg_.dt / 6.0) * sum;
 
-            if (csv.is_open()) {
-                write_csv_row(csv, snap, extras);
-            }
-            if (!quiet) {
-                print_snapshot(snap, extras);
-            }
-            if (wide.enabled()) {
-                wide.write(psi, t);
-            }
-        }
-
-        if (step == nsteps) {
-            break;
-        }
-
-        tridiag_mul(T, psi, k1);
-        k1 *= -I;
-
-        tmp = psi + (0.5 * dt) * k1;
-        tridiag_mul(T, tmp, k2);
-        k2 *= -I;
-
-        tmp = psi + (0.5 * dt) * k2;
-        tridiag_mul(T, tmp, k3);
-        k3 *= -I;
-
-        tmp = psi + dt * k3;
-        tridiag_mul(T, tmp, k4);
-        k4 *= -I;
-
-        Eigen::VectorXcd sum = k1;
-        sum.noalias() += 2.0 * k2;
-        sum.noalias() += 2.0 * k3;
-        sum.noalias() += k4;
-        psi.noalias() += (dt / 6.0) * sum;
-
-        /*double norm = l2_norm(psi, dx);
-        if (norm > 0.0) {
-            psi /= norm;
-        }
-*/
-        t += dt;
-    }
+    StepResult result;
+    result.matvecs = 4;
+    return result;
 }
 
