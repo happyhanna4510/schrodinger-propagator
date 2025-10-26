@@ -22,6 +22,8 @@ void evolve(const std::string& method,
             bool wide_im,
             bool quiet,
             int log_every,
+            int csv_every,
             bool aggregate,
-            int flush_every);
+            int flush_every,
+            bool no_theta);
 

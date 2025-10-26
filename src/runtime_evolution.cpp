@@ -109,7 +109,8 @@ fs::path run_time_evolution(const Grid& g,
     evolve(method, T, spectral, psi_init, g.dx, dt, nsteps, K,
            csv_path.string(), x_ptr,
            P.wide_re, P.wide_im, P.quiet,
-           P.log_every, P.aggregate, P.flush_every);
+           P.log_every, P.csv_every, P.aggregate,
+           P.flush_every, P.no_theta);
 
     if (!P.quiet) {
         std::cout << "# log saved to: " << csv_path.string() << "\n";

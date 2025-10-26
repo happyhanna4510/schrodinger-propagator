@@ -41,6 +41,14 @@ else()
     target_compile_options(morse PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+target_compile_definitions(morse PRIVATE NDEBUG EIGEN_NO_DEBUG)
+
+if (MSVC)
+    target_compile_options(morse PRIVATE /O2)
+else()
+    target_compile_options(morse PRIVATE -O3)
+endif()
+
 find_package(Eigen3 3.3 QUIET CONFIG)
 if (NOT Eigen3_FOUND)
     find_package(Eigen3 3.3 QUIET)

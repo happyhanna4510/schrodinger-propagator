@@ -1,5 +1,11 @@
 #include <filesystem>
 #include <iostream>
+#if defined(_MSC_VER) || defined(__SSE__)
+#    include <xmmintrin.h>
+#endif
+#if defined(_MSC_VER) || defined(__SSE3__)
+#    include <pmmintrin.h>
+#endif
 
 #include "cli.hpp"
 #include "grid.hpp"
@@ -11,6 +17,15 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char** argv) {
+#if defined(_MSC_VER) || defined(__SSE__)
+    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+#endif
+#if defined(_MSC_VER) || defined(__SSE3__)
+    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+#endif
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+
     Params P = parse_args(argc, argv);
 
     Grid g(P.N, P.xmax);

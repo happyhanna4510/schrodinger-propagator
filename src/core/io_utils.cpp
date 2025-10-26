@@ -16,6 +16,10 @@ constexpr std::complex<double> I(0.0, 1.0);
 
 std::string format_matvecs(double value) {
     std::ostringstream oss;
+    if (!std::isfinite(value)) {
+        oss << "nan";
+        return oss.str();
+    }
     const double rounded = std::round(value);
     if (std::abs(value - rounded) < 1e-9) {
         oss << static_cast<long long>(std::llround(rounded));

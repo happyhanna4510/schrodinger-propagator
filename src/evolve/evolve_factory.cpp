@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -22,7 +23,7 @@ namespace {
 struct IntervalAgg {
     int count = 0;
     double sum_ms = 0.0;
-    double sum_matvecs = 0.0;
+    long long sum_matvecs = 0;
     double max_norm_err = 0.0;
     double last_dt_ms = 0.0;
     double last_matvecs = 0.0;
@@ -45,12 +46,12 @@ void reset_interval(IntervalAgg& agg) {
 
 void update_interval(IntervalAgg& agg,
                      double dt_ms,
-                     double matvecs,
+                     int matvecs,
                      double norm_err,
                      const StepResult& result) {
     ++agg.count;
     agg.sum_ms += dt_ms;
-    agg.sum_matvecs += matvecs;
+    agg.sum_matvecs += static_cast<long long>(matvecs);
     agg.max_norm_err = std::max(agg.max_norm_err, norm_err);
     agg.last_dt_ms = dt_ms;
     agg.last_matvecs = static_cast<double>(matvecs);
@@ -75,19 +76,6 @@ IntervalStats finalize_interval(const IntervalAgg& agg, bool aggregate) {
     stats.K_used = agg.last_K_used;
     stats.bn_ratio = agg.last_bn_ratio;
     return stats;
-}
-
-bool should_tick(int every, int step, int total_steps) {
-    if (every <= 0) {
-        return false;
-    }
-    if (step == 0) {
-        return true;
-    }
-    if (step + 1 == total_steps) {
-        return true;
-    }
-    return (step % every) == 0;
 }
 
 std::string to_lower(std::string s) {
@@ -121,8 +109,10 @@ void evolve(const std::string& method,
             bool wide_im,
             bool quiet,
             int log_every,
+            int csv_every,
             bool aggregate,
-            int flush_every) {
+            int flush_every,
+            bool no_theta) {
     const std::string method_norm = normalize_method(method);
     const bool is_cheb = (method_norm == "cheb");
 
@@ -133,8 +123,10 @@ void evolve(const std::string& method,
     cfg.hbar = 1.0;
     cfg.tolerance = 1e-12;
     cfg.log_every = log_every;
+    cfg.csv_every = csv_every;
     cfg.aggregate = aggregate;
     cfg.flush_every = flush_every;
+    cfg.no_theta = no_theta;
 
     std::unique_ptr<EvolverBase> evolver;
 
@@ -148,9 +140,11 @@ void evolve(const std::string& method,
         throw std::runtime_error("unknown evolution method: " + method);
     }
 
+    const bool enable_csv = (!csv_path.empty() && csv_every != 0);
+
     std::ofstream csv;
     int csv_rows = 0;
-    if (!csv_path.empty()) {
+    if (enable_csv) {
         csv.open(csv_path, std::ios::out | std::ios::trunc);
         if (!csv) {
             throw std::runtime_error("failed to open log csv");
@@ -164,6 +158,7 @@ void evolve(const std::string& method,
     double t = 0.0;
 
     IntervalAgg agg;
+    int tick_counter = 0;
 
     for (int step = 0; step < nsteps; ++step) {
         const auto start = std::chrono::steady_clock::now();
@@ -176,15 +171,19 @@ void evolve(const std::string& method,
         const double norm_sq = l2_norm_sq(psi, dx);
         const double norm_err = std::abs(norm_sq - 1.0);
 
-        update_interval(agg, dt_ms, static_cast<double>(result.matvecs), norm_err, result);
+        update_interval(agg, dt_ms, result.matvecs, norm_err, result);
 
-        const bool tick = should_tick(cfg.log_every, step, nsteps);
+        const bool tick = (cfg.log_every > 0) &&
+                          ((step % cfg.log_every) == 0 || step == 0 || step + 1 == nsteps);
         if (tick) {
             IntervalStats stats = finalize_interval(agg, cfg.aggregate);
-            const double theta = compute_theta(spectral, psi, t, dx);
+            double theta = std::numeric_limits<double>::quiet_NaN();
+            if (!cfg.no_theta) {
+                theta = compute_theta(spectral, psi, t, dx);
+            }
             const int step_out = step + 1;
 
-            if (csv.is_open()) {
+            if (csv.is_open() && ((cfg.csv_every <= 1) || (tick_counter % cfg.csv_every) == 0)) {
                 write_step_csv_row(csv, method_norm, step_out, t, dt, stats.dt_ms,
                                    stats.matvecs, stats.norm_err, theta,
                                    stats.K_used, stats.bn_ratio, is_cheb);
@@ -194,12 +193,13 @@ void evolve(const std::string& method,
                 }
             }
 
-            if (!quiet) {
+            if (!quiet && cfg.log_every > 0) {
                 print_step_console(method_norm, step_out, t, stats.dt_ms, stats.matvecs,
                                    stats.norm_err, theta, stats.K_used);
             }
 
             reset_interval(agg);
+            ++tick_counter;
         }
 
         if (wide.enabled()) {
