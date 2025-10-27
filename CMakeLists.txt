@@ -14,6 +14,7 @@ set(SOURCES
     src/core/math_utils.cpp
     src/core/spectral.cpp
     src/evolve/evolve_factory.cpp
+    src/evolve/evolve_chebyshev.cpp
     src/evolve/evolve_rk4.cpp
     src/evolve/evolve_taylor.cpp
     src/hamiltonian.cpp
@@ -38,6 +39,14 @@ if (MSVC)
     target_compile_options(morse PRIVATE /W4 /permissive-)
 else()
     target_compile_options(morse PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+target_compile_definitions(morse PRIVATE NDEBUG EIGEN_NO_DEBUG)
+
+if (MSVC)
+    target_compile_options(morse PRIVATE /O2)
+else()
+    target_compile_options(morse PRIVATE -O3)
 endif()
 
 find_package(Eigen3 3.3 QUIET CONFIG)

@@ -3,12 +3,9 @@
 #include <Eigen/Core>
 
 #include <string>
-#include <vector>
 
-#include "core/io_utils.hpp"
-#include "core/spectral.hpp"
-#include "core/tridiag.hpp"
 #include "core/workspace.hpp"
+#include "evolve/evolver_base.hpp"
 
 void taylor_step_tridiag(const Tridiag& T,
                          Eigen::VectorXcd& psi,
@@ -16,18 +13,13 @@ void taylor_step_tridiag(const Tridiag& T,
                          int K,
                          TaylorWorkspace& workspace);
 
-void evolve_taylor_tridiag(const Tridiag& T,
-                           const SpectralData& spectral,
-                           const Eigen::VectorXcd& psi_init,
-                           double dx,
-                           double dt,
-                           int nsteps,
-                           int K,
-                           int log_every,
-                           const std::string& csv_path,
-                           const std::vector<double>* x_inner,
-                           bool wide_re,
-                           bool wide_im,
-                           LogExtras extras,
-                           bool quiet);
+class TaylorEvolver : public EvolverBase {
+public:
+    TaylorEvolver(const Tridiag& T, const EvolverConfig& cfg);
+
+    StepResult step(Eigen::VectorXcd& psi) override;
+
+private:
+    TaylorWorkspace workspace_;
+};
 

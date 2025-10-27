@@ -13,7 +13,12 @@ struct Params {
     int    K         = 4;
     double dt        = 1e-5;
     double tmax      = 10.0;
-    int    log_every = 10000;
+    double tol       = 1e-12;
+    int    log_every  = 10000;
+    int    csv_every  = 1;
+    bool   aggregate  = false;
+    int    flush_every = 1000;
+    bool   no_theta    = false;
 
     // выводы
     int    first     = 10;

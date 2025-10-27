@@ -1,14 +1,8 @@
 #include "evolve/evolve_taylor.hpp"
 
-#include <algorithm>
-#include <cmath>
 #include <complex>
-#include <fstream>
-#include <stdexcept>
 
-#include "core/io_utils.hpp"
 #include "core/math_utils.hpp"
-#include "io.hpp"
 
 namespace {
 constexpr std::complex<double> I(0.0, 1.0);
@@ -38,61 +32,17 @@ void taylor_step_tridiag(const Tridiag& T,
     psi.swap(sum);
 }
 
-void evolve_taylor_tridiag(const Tridiag& T,
-                           const SpectralData& spectral,
-                           const Eigen::VectorXcd& psi_init,
-                           double dx,
-                           double dt,
-                           int nsteps,
-                           int K,
-                           int log_every,
-                           const std::string& csv_path,
-                           const std::vector<double>* x_inner,
-                           bool wide_re,
-                           bool wide_im,
-                           LogExtras extras,
-                           bool quiet) {
-    std::ofstream csv;
-    if (!csv_path.empty()) {
-        csv.open(csv_path, std::ios::out | std::ios::trunc);
-        if (!csv) {
-            throw std::runtime_error("failed to open log csv");
-        }
-        write_csv_header(csv, extras);
-    }
+TaylorEvolver::TaylorEvolver(const Tridiag& T, const EvolverConfig& cfg)
+    : EvolverBase(T, cfg) {
+    workspace_.resize(T.a.size());
+}
 
-    io::WideDump wide(csv_path, x_inner, wide_re, wide_im);
+StepResult TaylorEvolver::step(Eigen::VectorXcd& psi) {
+    workspace_.resize(psi.size());
+    taylor_step_tridiag(T_, psi, cfg_.dt, cfg_.K, workspace_);
 
-    Eigen::VectorXcd psi = psi_init;
-    double t = 0.0;
-
-    TaylorWorkspace workspace;
-    workspace.resize(psi.size());
-
-    const double norm_sq0 = l2_norm_sq(psi_init, dx);
-    const double norm0 = std::sqrt(std::max(0.0, norm_sq0));
-
-    for (int step = 0; step <= nsteps; ++step) {
-        if (step % log_every == 0) {
-            LogSnapshot snap = collect_snapshot(spectral, psi, t, dx, step, norm_sq0, norm0);
-
-            if (csv.is_open()) {
-                write_csv_row(csv, snap, extras);
-            }
-            if (!quiet) {
-                print_snapshot(snap, extras);
-            }
-            if (wide.enabled()) {
-                wide.write(psi, t);
-            }
-        }
-
-        if (step == nsteps) {
-            break;
-        }
-
-        taylor_step_tridiag(T, psi, dt, K, workspace);
-        t += dt;
-    }
+    StepResult result;
+    result.matvecs = cfg_.K;
+    return result;
 }
 

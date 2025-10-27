@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "core/io_utils.hpp"
 #include "core/spectral.hpp"
 #include "core/tridiag.hpp"
 
@@ -15,13 +14,17 @@ void evolve(const std::string& method,
             const Eigen::VectorXcd& psi_init,
             double dx,
             double dt,
+            double tol,
             int nsteps,
             int K,
-            int log_every,
             const std::string& csv_path,
             const std::vector<double>* x_inner,
             bool wide_re,
             bool wide_im,
-            LogExtras extras,
-            bool quiet);
+            bool quiet,
+            int log_every,
+            int csv_every,
+            bool aggregate,
+            int flush_every,
+            bool no_theta);
 
