@@ -58,15 +58,10 @@ Params parse_args(int argc, char** argv) {
 
         else if (s == "--evolve_only" || s == "--evolve-only") p.evolve_only = true;
         else if (s == "--quiet")       p.quiet       = true;
-        else if (s == "--no_wide" || s == "--no-wide") p.no_wide = true;
-        else if (s == "--wide-re")     p.wide_re     = true;
-        else if (s == "--wide-im")     p.wide_im     = true;
-        else if (s == "--wide-complex") { p.wide_re = true; p.wide_im = true; }
+        else if (s == "--wide" ) p.wide = true;
+        //else if (s == "--wide-re")     p.wide_re     = true;
+        //else if (s == "--wide-im")     p.wide_im     = true;
 
-        else if (s == "--no-log-p0")         p.log_p0 = false;
-        else if (s == "--no-log-err" || s == "--no-log-exact") p.log_err_exact = false;
-        else if (s == "--log-basic") { p.log_p0 = false; p.log_err_exact = false; }
-        else if (s == "--log-all")   { p.log_p0 = true;  p.log_err_exact = true; }
         else if (s == "--aggregate") p.aggregate = true;
         else if (s == "--no-theta") p.no_theta = true;
 

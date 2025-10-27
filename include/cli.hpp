@@ -29,11 +29,9 @@ struct Params {
     // НОВЫЕ ФЛАГИ
     bool evolve_only = false;   // пропустить статическую часть, если морс уже есть
     bool quiet       = false;   // не печатать таблицы/мониторинг
-    bool no_wide     = false;   // не писать psi_*_wide.csv
-    bool wide_re     = false;   // писать Re[psi] в wide CSV
-    bool wide_im     = false;   // писать Im[psi] в wide CSV
-    bool log_p0      = false;    //не добавлять колонку p0 в лог
-    bool log_err_exact = false;  // не добавлять колонку err_exact
+    bool wide     = false;   // не писать psi_*_wide.csv
+    bool wide_re     = false;   // не писать Re[psi] в wide CSV
+    bool wide_im     = false;   // не писать Im[psi] в wide CSV
 
 };
 

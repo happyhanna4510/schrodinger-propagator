@@ -58,7 +58,7 @@ fs::path run_time_evolution(const Grid& g,
 
     std::vector<double> x_inner;
     const std::vector<double>* x_ptr = nullptr;
-    if (!P.no_wide) {
+    if (P.wide) {
         x_inner.resize(g.N - 2);
         for (int i = 0; i < g.N - 2; ++i) {
             x_inner[i] = g.x[i + 1];
