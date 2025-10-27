@@ -101,6 +101,7 @@ void evolve(const std::string& method,
             const Eigen::VectorXcd& psi_init,
             double dx,
             double dt,
+            double tol,
             int nsteps,
             int K,
             const std::string& csv_path,
@@ -121,7 +122,7 @@ void evolve(const std::string& method,
     cfg.dx = dx;
     cfg.K = K;
     cfg.hbar = 1.0;
-    cfg.tolerance = 1e-12;
+    cfg.tolerance = tol;
     cfg.log_every = log_every;
     cfg.csv_every = csv_every;
     cfg.aggregate = aggregate;
