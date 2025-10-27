@@ -40,12 +40,39 @@ double compute_theta(const SpectralData& spectral,
     return (coeff_exact - coeff_num).squaredNorm();
 }
 
+std::optional<double> compute_e_true(const SpectralData& spectral,
+                                     const Eigen::VectorXcd& psi,
+                                     double t) {
+    if (spectral.evals.size() == 0 || spectral.coeffs0.size() == 0 ||
+        spectral.eigenvectors.size() == 0) {
+        return std::nullopt;
+    }
+
+    const auto n_states = spectral.eigenvectors.cols();
+    if (spectral.eigenvectors.rows() != psi.size() ||
+        spectral.coeffs0.size() != n_states ||
+        spectral.evals.size() != n_states) {
+        return std::nullopt;
+    }
+
+    Eigen::ArrayXcd phase = (-I * spectral.evals.array() * t).exp();
+    Eigen::VectorXcd coeff_exact = (spectral.coeffs0.array() * phase).matrix();
+    Eigen::VectorXcd psi_exact = spectral.eigenvectors * coeff_exact;
+
+    const double denom = psi_exact.norm();
+    const double numer = (psi - psi_exact).norm();
+    if (denom > 0.0) {
+        return numer / denom;
+    }
+    return numer;
+}
+
 void write_step_csv_header(std::ofstream& f, bool include_cheb_extras) {
     f << "method,step,t,dt,dt_ms,matvecs,norm_err,theta";
     if (include_cheb_extras) {
         f << ",K_used,bn_ratio";
     }
-    f << '\n';
+    f << ",e_true\n";
 }
 
 void write_step_csv_row(std::ofstream& f,
@@ -57,6 +84,7 @@ void write_step_csv_row(std::ofstream& f,
                         double matvecs,
                         double norm_err,
                         double theta,
+                        std::optional<double> e_true,
                         std::optional<int> K_used,
                         std::optional<double> bn_ratio,
                         bool include_cheb_extras) {
@@ -83,6 +111,11 @@ void write_step_csv_row(std::ofstream& f,
         }
     }
 
+    row << ',';
+    if (e_true) {
+        row << std::scientific << std::setprecision(6) << *e_true;
+    }
+
     row << '\n';
     f << row.str();
 }
@@ -94,6 +127,7 @@ void print_step_console(const std::string& method,
                         double matvecs,
                         double norm_err,
                         double theta,
+                        std::optional<double> e_true,
                         std::optional<int> K_used) {
     std::ostringstream line;
     line << '[' << method << "] "
@@ -103,6 +137,10 @@ void print_step_console(const std::string& method,
          << "  matvecs=" << format_matvecs(matvecs)
          << "  norm_err=" << std::scientific << std::setprecision(3) << norm_err
          << "  theta=" << std::scientific << std::setprecision(3) << theta;
+
+    if (e_true) {
+        line << "  Etrue=" << std::scientific << std::setprecision(3) << *e_true;
+    }
 
     if (K_used) {
         line << "  K=" << *K_used;
