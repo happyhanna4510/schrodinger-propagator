@@ -110,8 +110,7 @@ fs::path run_time_evolution(const Grid& g,
                       << ", dt=" << dt << ", tmax=" << tmax << ") ===\n";
         } else if (is_cheb) {
             std::cout << "\n# === Time evolution (cheb, dt=" << dt
-                      << ", tmax=" << tmax << ", tol=" << tol
-                      << ", Kcap=" << K << ") ===\n";
+                      << ", tmax=" << tmax << ", tol=" << tol<<") ===\n";
         } else {
             std::cout << "\n# === Time evolution (" << method
                       << ", dt=" << dt << ", tmax=" << tmax << ") ===\n";

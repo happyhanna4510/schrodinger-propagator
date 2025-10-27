@@ -27,12 +27,14 @@ ChebyshevEvolver::ChebyshevEvolver(const Tridiag& T,
     if (!trivial_case_) {
         norm_factor_ = 2.0 / deltaE_;
         x_ = (deltaE_ * cfg_.dt) / (2.0 * cfg_.hbar);
-        phase_ = std::exp(I * ((0.5 * deltaE_ + Emin_) * cfg_.dt) / cfg_.hbar);
+        phase_ = std::exp(-I * ((0.5 * deltaE_ + Emin_) * cfg_.dt) / cfg_.hbar);
+
     } else {
         norm_factor_ = 0.0;
         x_ = 0.0;
         phase_ = {1.0, 0.0};
-        trivial_phase_ = std::exp(I * (Emin_ * cfg_.dt) / cfg_.hbar);
+        trivial_phase_ = std::exp(-I * (Emin_ * cfg_.dt) / cfg_.hbar);
+
     }
 
     const Eigen::Index n = T.a.size();
@@ -66,7 +68,7 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
         tmp_.resize(n);
     }
 
-    const int nmax = std::max(0, cfg_.K);
+    const int max_safe = 10000; // защита от зависания
 
     p_prev_ = psi;
 
@@ -74,15 +76,12 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
     Eigen::VectorXcd accum = J0 * p_prev_;
 
     double bn_abs_max = std::abs(J0);
-    if (bn_abs_max == 0.0) {
-        bn_abs_max = 0.0;
-    }
-
     int terms = 1;
     double last_ratio = 1.0;
-    std::complex<double> i_pow(1.0, 0.0);
+    std::complex<double> i_pow(1.0, 0.0); // (-i)^0
 
-    for (int n = 1; n <= nmax; ++n) {
+    for (int n = 1; n < max_safe; ++n) {
+        // рекуррентное построение T_n
         if (n == 1) {
             apply_normalized(p_prev_, p_curr_);
         } else {
@@ -93,29 +92,30 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
             p_curr_.swap(tmp_);
         }
 
-        i_pow *= I;
+        i_pow *= -I; // (-i)^n
+
         const double Jn = std::cyl_bessel_j(n, x_);
-        const std::complex<double> bn = 2.0 * i_pow * Jn;
+        const std::complex<double> bn = 2.0 * i_pow * Jn; // (2−δ_{n0}), для n≥1 коэффициент 2
         const double abs_bn = std::abs(bn);
 
-        double ratio = 1.0;
-        if (bn_abs_max > 0.0) {
-            ratio = abs_bn / bn_abs_max;
-        }
-
-        accum.noalias() += bn * p_curr_;
-        ++terms;
-
+        // обновляем максимум
         if (abs_bn > bn_abs_max) {
             bn_abs_max = abs_bn;
         }
 
-        last_ratio = (bn_abs_max > 0.0) ? ratio : 0.0;
+        double ratio = (bn_abs_max > 0.0) ? abs_bn / bn_abs_max : 0.0;
+        last_ratio = ratio;
 
-        if (cfg_.tolerance > 0.0 && bn_abs_max > 0.0 && ratio < cfg_.tolerance) {
+        // добавляем вклад
+        accum.noalias() += bn * p_curr_;
+        ++terms;
+
+        // проверка остановки по толерантности
+        if (cfg_.tolerance > 0.0 && ratio < cfg_.tolerance) {
             break;
         }
     }
+
 
     psi = phase_ * accum;
 
