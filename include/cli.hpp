@@ -15,7 +15,7 @@ struct Params {
     double tmax      = 10.0;
     int    log_every  = 10000;
     int    csv_every  = 1;
-    bool   aggregate  = true;
+    bool   aggregate  = false;
     int    flush_every = 1000;
     bool   no_theta    = false;
 

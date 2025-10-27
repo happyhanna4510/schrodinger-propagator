@@ -16,7 +16,9 @@
 
 namespace fs = std::filesystem;
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
+    
 #if defined(_MSC_VER) || defined(__SSE__)
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
 #endif

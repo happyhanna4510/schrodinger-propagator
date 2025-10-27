@@ -41,7 +41,7 @@ Params parse_args(int argc, char** argv) {
 
         else if (s == "--first")    geti(i, p.first);
 
-        else if (s == "--evolve") { p.do_evolve = true; gets(i, p.evolve_method); }
+        else if (s == "--evolve") { p.do_evolve = true; get); }
         else if (s == "--dt")       getd(i, p.dt);
         else if (s == "--tmax")     getd(i, p.tmax);
         else if (s == "--K")        geti(i, p.K);
@@ -66,7 +66,7 @@ Params parse_args(int argc, char** argv) {
         else if (s == "--no-log-err" || s == "--no-log-exact") p.log_err_exact = false;
         else if (s == "--log-basic") { p.log_p0 = false; p.log_err_exact = false; }
         else if (s == "--log-all")   { p.log_p0 = true;  p.log_err_exact = true; }
-        else if (s == "--no-aggregate") p.aggregate = false;
+        else if (s == "--aggregate") p.aggregate = true;
         else if (s == "--no-theta") p.no_theta = true;
 
         else {

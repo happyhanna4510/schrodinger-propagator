@@ -160,7 +160,8 @@ void evolve(const std::string& method,
     IntervalAgg agg;
     int tick_counter = 0;
 
-    for (int step = 0; step < nsteps; ++step) {
+    for (int step = 0; step < nsteps; ++step) 
+    {
         const auto start = std::chrono::steady_clock::now();
         StepResult result = evolver->step(psi);
         const auto end = std::chrono::steady_clock::now();
@@ -175,7 +176,10 @@ void evolve(const std::string& method,
 
         const bool tick = (cfg.log_every > 0) &&
                           ((step % cfg.log_every) == 0 || step == 0 || step + 1 == nsteps);
-        if (tick) {
+
+
+        if (tick) 
+        {
             IntervalStats stats = finalize_interval(agg, cfg.aggregate);
             double theta = std::numeric_limits<double>::quiet_NaN();
             if (!cfg.no_theta) {
@@ -197,14 +201,15 @@ void evolve(const std::string& method,
                 print_step_console(method_norm, step_out, t, stats.dt_ms, stats.matvecs,
                                    stats.norm_err, theta, stats.K_used);
             }
+            if (wide.enabled()) {
+                wide.write(psi, t);
+            }
 
             reset_interval(agg);
             ++tick_counter;
         }
 
-        if (wide.enabled()) {
-            wide.write(psi, t);
-        }
+
     }
 }
 
