@@ -179,18 +179,20 @@ void evolve(const std::string& method,
                           ((step % cfg.log_every) == 0 || step == 0 || step + 1 == nsteps);
 
 
-        if (tick) 
+        if (tick)
         {
             IntervalStats stats = finalize_interval(agg, cfg.aggregate);
             double theta = std::numeric_limits<double>::quiet_NaN();
+            std::optional<double> e_true;
             if (!cfg.no_theta) {
                 theta = compute_theta(spectral, psi, t, dx);
+                e_true = compute_e_true(spectral, psi, t);
             }
             const int step_out = step + 1;
 
             if (csv.is_open() && ((cfg.csv_every <= 1) || (tick_counter % cfg.csv_every) == 0)) {
                 write_step_csv_row(csv, method_norm, step_out, t, dt, stats.dt_ms,
-                                   stats.matvecs, stats.norm_err, theta,
+                                   stats.matvecs, stats.norm_err, theta, e_true,
                                    stats.K_used, stats.bn_ratio, is_cheb);
                 ++csv_rows;
                 if (cfg.flush_every > 0 && (csv_rows % cfg.flush_every) == 0) {
@@ -200,7 +202,7 @@ void evolve(const std::string& method,
 
             if (!quiet && cfg.log_every > 0) {
                 print_step_console(method_norm, step_out, t, stats.dt_ms, stats.matvecs,
-                                   stats.norm_err, theta, stats.K_used);
+                                   stats.norm_err, theta, e_true, stats.K_used);
             }
             if (wide.enabled()) {
                 wide.write(psi, t);
