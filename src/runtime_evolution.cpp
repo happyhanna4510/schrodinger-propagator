@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <complex>
 #include <filesystem>
@@ -46,6 +47,7 @@ fs::path run_time_evolution(const Grid& g,
     int    K      = (P.K > 0 ? P.K : 4);
     double dt     = (P.dt > 0 ? P.dt : 1e-6);
     double tmax   = (P.tmax > 0 ? P.tmax : 1e-3);
+    double tol    = (P.tol > 0 ? P.tol : 1e-12);
     int    nsteps = static_cast<int>(std::llround(tmax / dt));
     const std::string method = P.evolve_method.empty() ? std::string("taylor") : P.evolve_method;
 
@@ -97,16 +99,26 @@ fs::path run_time_evolution(const Grid& g,
 #endif
 
     if (!P.quiet) {
-        if (method == "taylor") {
+        std::string method_lower = method;
+        std::transform(method_lower.begin(), method_lower.end(), method_lower.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        const bool is_taylor = (method_lower == "taylor");
+        const bool is_cheb = (method_lower == "cheb" || method_lower == "chebyshev");
+
+        if (is_taylor) {
             std::cout << "\n# === Time evolution (Taylor K=" << K
                       << ", dt=" << dt << ", tmax=" << tmax << ") ===\n";
+        } else if (is_cheb) {
+            std::cout << "\n# === Time evolution (cheb, dt=" << dt
+                      << ", tmax=" << tmax << ", tol=" << tol
+                      << ", Kcap=" << K << ") ===\n";
         } else {
             std::cout << "\n# === Time evolution (" << method
                       << ", dt=" << dt << ", tmax=" << tmax << ") ===\n";
         }
     }
 
-    evolve(method, T, spectral, psi_init, g.dx, dt, nsteps, K,
+    evolve(method, T, spectral, psi_init, g.dx, dt, tol, nsteps, K,
            csv_path.string(), x_ptr,
            P.wide_re, P.wide_im, P.quiet,
            P.log_every, P.csv_every, P.aggregate,

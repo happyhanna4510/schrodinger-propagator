@@ -13,6 +13,7 @@ struct Params {
     int    K         = 4;
     double dt        = 1e-5;
     double tmax      = 10.0;
+    double tol       = 1e-12;
     int    log_every  = 10000;
     int    csv_every  = 1;
     bool   aggregate  = false;
