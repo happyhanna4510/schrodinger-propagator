@@ -18,7 +18,7 @@ namespace fs = std::filesystem;
 
 int main(int argc, char** argv) 
 {
-    
+
 #if defined(_MSC_VER) || defined(__SSE__)
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
 #endif
@@ -49,10 +49,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    
     fs::path csv_path = run_time_evolution(g, U_true, P, out);
-    if (!P.quiet) {
-        std::cout << "# log saved to: " << csv_path.string() << "\n";
-    }
 
     return 0;
 }

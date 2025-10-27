@@ -41,7 +41,7 @@ Params parse_args(int argc, char** argv) {
 
         else if (s == "--first")    geti(i, p.first);
 
-        else if (s == "--evolve") { p.do_evolve = true; get); }
+        else if (s == "--evolve") { p.do_evolve = true; gets(i, p.evolve_method); }
         else if (s == "--dt")       getd(i, p.dt);
         else if (s == "--tmax")     getd(i, p.tmax);
         else if (s == "--K")        geti(i, p.K);
