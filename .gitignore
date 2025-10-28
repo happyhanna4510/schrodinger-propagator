@@ -48,6 +48,9 @@ results/**
 figures/**
 !figures/.gitkeep
 
+plots_out/**
+!plots_out/.gitkeep
+
 .ipynb_checkpoints/
 
 # Python

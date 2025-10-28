@@ -3,16 +3,5 @@ cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_F
 cmake --build . --config Release -j8
 
 powershell -ExecutionPolicy Bypass -File scripts/run_series.ps1
-python .\scripts\plot_taylor.py --glob "results/taylor_K*_dt*.csv" --split_by_K
-python .\scripts\plot_psi_wide.py
 
-# Windows: Morse static plots
-python .\scripts\plot_morse.py --gamma 10 --xmax 30 --ymin -0.05 --ymax 1.2
-
-# Linux / macOS (bash)
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
-
-./build/morse --gamma 10 --N 2001 --xmax 30 --evolve taylor --dt 1e-5 --tmax 1e-3 --log 5000 --no_wide --quiet
-python3 scripts/plot_taylor.py --glob "results/taylor_K*_dt*.csv" --split_by_K --no_show
-python3 scripts/plot_psi_wide.py --glob "results/*_abs2_wide.csv" --no_show
+python scripts\plot_compare_methods.py --root .\results --out .\plots_out --verbose

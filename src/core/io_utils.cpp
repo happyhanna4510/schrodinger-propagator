@@ -30,15 +30,57 @@ std::string format_matvecs(double value) {
 }
 }
 
-double compute_theta(const SpectralData& spectral,
+double compute_theta(const SpectralData& S,
                      const Eigen::VectorXcd& psi,
-                     double t,
-                     double dx) {
-    Eigen::ArrayXcd phase = (-I * spectral.evals.array() * t).exp();
-    Eigen::VectorXcd coeff_exact = (spectral.coeffs0.array() * phase).matrix();
-    Eigen::VectorXcd coeff_num = dx * spectral.eigenvectors.adjoint() * psi;
-    return (coeff_exact - coeff_num).squaredNorm();
+                     double t, double dx,
+                     bool relative /*= false*/) {
+    using cplx = std::complex<double>;
+
+    if (!std::isfinite(dx)) std::cerr << "[θ] dx=" << dx << " (bad)\n";
+    if (!S.eigenvectors.allFinite()) std::cerr << "[θ] eigenvectors NaN\n";
+    if (!S.coeffs0.allFinite()) std::cerr << "[θ] coeffs0 NaN\n";
+    if (!S.evals.allFinite()) std::cerr << "[θ] evals NaN\n";
+
+    std::cerr << "[θ] psi=" << psi.size()
+          << " eigV rows=" << S.eigenvectors.rows()
+          << " cols=" << S.eigenvectors.cols()
+          << " coeffs0=" << S.coeffs0.size()
+          << " evals=" << S.evals.size() << "\n";
+
+
+    static const cplx iC(0.0, 1.0);
+
+    // --- страховка dx ---
+    if (!std::isfinite(dx) || dx <= 0.0) {
+        // если у тебя есть S.dx — лучше взять его; иначе хотя бы 1.0
+        // dx = S.dx; // если поле есть
+        dx = 1.0;
+        // временный вывод, чтобы увидеть проблему у источника:
+        std::cerr << "[theta] bad dx, fallback to " << dx << "\n";
+    }
+
+    // точные коэффициенты: C_dok(t) = C(0) * exp(-i E t)
+    Eigen::ArrayXcd phase = (-iC * S.evals.array() * t).exp();
+    Eigen::VectorXcd C_dok = (S.coeffs0.array() * phase).matrix();
+
+    // численные: C_num(t) = dx * V^H * ψ(t)
+    Eigen::VectorXcd C_num = dx * S.eigenvectors.adjoint() * psi;
+
+    double num = (C_dok - C_num).squaredNorm();
+    if (!relative) return num;
+
+    double den = std::max(1e-300, C_dok.squaredNorm());
+
+    if (relative) {
+    std::cerr << "[θ] num=" << num
+              << " den=" << C_dok.squaredNorm()
+              << " rel=" << std::sqrt(num / std::max(1e-300, C_dok.squaredNorm()))
+              << "\n";
 }
+
+    return std::sqrt(num / den);
+}
+
 
 std::optional<double> compute_e_true(const SpectralData& spectral,
                                      const Eigen::VectorXcd& psi,

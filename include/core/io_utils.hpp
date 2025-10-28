@@ -8,10 +8,12 @@
 
 #include "core/spectral.hpp"
 
-double compute_theta(const SpectralData& spectral,
+double compute_theta(const SpectralData& S,
                      const Eigen::VectorXcd& psi,
-                     double t,
-                     double dx);
+                     double t, double dx,
+                     bool relative = false);
+
+
 
 std::optional<double> compute_e_true(const SpectralData& spectral,
                                      const Eigen::VectorXcd& psi,
