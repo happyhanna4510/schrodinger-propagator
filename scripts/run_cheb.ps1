@@ -25,18 +25,17 @@ Write-Host "Using binary: $exe" -ForegroundColor Green
 
 # PARAMETERS
 $gammas = @(10, 20)
-$dts    = @('1e-3') #,'1e-4','1e-5','1e-6'#)
-$tols   = @('1e-11','1e-12')
+$dts    = @('1e-4','1e-5','1e-6')
+$tols   = @('1e-11')
 $N      = 2001   # adjust if needed
 $xmax   = 30     # adjust if needed
 $tmax   = 10
 
 # log_every by dt
 $logMap = @{
-  '1e-3' = 1000
-  #'1e-4' = 10000
-  #'1e-5' = 50000
-  #'1e-6' = 100000
+  '1e-4' = 10000
+  '1e-5' = 50000
+  '1e-6' = 100000
 }
 
 # OUTPUT ROOTS

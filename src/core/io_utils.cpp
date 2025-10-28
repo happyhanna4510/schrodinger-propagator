@@ -1,13 +1,17 @@
 #include "core/io_utils.hpp"
 
 #include <algorithm>
+#include <array>
 #include <complex>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
+#include <cstdlib>
+#include <utility>
 
 #include "core/math_utils.hpp"
 
@@ -28,58 +32,71 @@ std::string format_matvecs(double value) {
     }
     return oss.str();
 }
+
+template <typename Spectral>
+auto try_get_dx(const Spectral& S, int) -> decltype(S.dx, double()) {
+    return S.dx;
+}
+
+template <typename Spectral>
+double try_get_dx(const Spectral&, ...) {
+    return std::numeric_limits<double>::quiet_NaN();
+}
 }
 
 double compute_theta(const SpectralData& S,
                      const Eigen::VectorXcd& psi,
                      double t, double dx,
                      bool relative /*= false*/) {
-    using cplx = std::complex<double>;
+    static const std::complex<double> iC(0.0, 1.0);
 
-    if (!std::isfinite(dx)) std::cerr << "[θ] dx=" << dx << " (bad)\n";
-    if (!S.eigenvectors.allFinite()) std::cerr << "[θ] eigenvectors NaN\n";
-    if (!S.coeffs0.allFinite()) std::cerr << "[θ] coeffs0 NaN\n";
-    if (!S.evals.allFinite()) std::cerr << "[θ] evals NaN\n";
-
-    std::cerr << "[θ] psi=" << psi.size()
-          << " eigV rows=" << S.eigenvectors.rows()
-          << " cols=" << S.eigenvectors.cols()
-          << " coeffs0=" << S.coeffs0.size()
-          << " evals=" << S.evals.size() << "\n";
-
-
-    static const cplx iC(0.0, 1.0);
-
-    // --- страховка dx ---
-    if (!std::isfinite(dx) || dx <= 0.0) {
-        // если у тебя есть S.dx — лучше взять его; иначе хотя бы 1.0
-        // dx = S.dx; // если поле есть
-        dx = 1.0;
-        // временный вывод, чтобы увидеть проблему у источника:
-        std::cerr << "[theta] bad dx, fallback to " << dx << "\n";
+    // 1) Размерности: молча возвращаем NaN при несоответствии.
+    const bool size_match =
+        (S.eigenvectors.rows() == psi.size()) &&
+        (S.eigenvectors.cols() == S.evals.size()) &&
+        (S.eigenvectors.cols() == S.coeffs0.size());
+    if (!size_match) {
+        return std::numeric_limits<double>::quiet_NaN();
     }
 
-    // точные коэффициенты: C_dok(t) = C(0) * exp(-i E t)
-    Eigen::ArrayXcd phase = (-iC * S.evals.array() * t).exp();
-    Eigen::VectorXcd C_dok = (S.coeffs0.array() * phase).matrix();
+    // 2) Эффективный шаг сетки: S.dx (если есть и валиден) → иначе dx → иначе 1.0.
+    auto select_dx = [&](double provided_dx) {
+        double dx_eff = provided_dx;
 
-    // численные: C_num(t) = dx * V^H * ψ(t)
-    Eigen::VectorXcd C_num = dx * S.eigenvectors.adjoint() * psi;
+        // Если у тебя есть утилита try_get_dx(S, default):
+        // (оставляю, как ты и просила; если её нет — закомментируй следующую строку)
+        const double candidate = try_get_dx(S, std::numeric_limits<double>::quiet_NaN());
 
-    double num = (C_dok - C_num).squaredNorm();
-    if (!relative) return num;
+        // Если try_get_dx отсутствует, можно заменить этот блок на:
+        // double candidate = std::numeric_limits<double>::quiet_NaN(); // без S.dx
 
-    double den = std::max(1e-300, C_dok.squaredNorm());
+        if (std::isfinite(candidate) && candidate > 0.0) {
+            dx_eff = candidate;
+        }
+        if (!std::isfinite(dx_eff) || dx_eff <= 0.0) {
+            dx_eff = 1.0;
+        }
+        return dx_eff;
+    };
+    const double dx_eff = select_dx(dx);
 
-    if (relative) {
-    std::cerr << "[θ] num=" << num
-              << " den=" << C_dok.squaredNorm()
-              << " rel=" << std::sqrt(num / std::max(1e-300, C_dok.squaredNorm()))
-              << "\n";
+    // 3) Коэффициенты по конспекту.
+    const Eigen::ArrayXcd phase = (-iC * S.evals.array() * t).exp();
+    const Eigen::VectorXcd C_dok = (S.coeffs0.array() * phase).matrix();
+    const Eigen::VectorXcd C_num = dx_eff * S.eigenvectors.adjoint() * psi;
+
+    // 4) Абсолютная и относительная ошибки.
+    const double theta_abs = (C_dok - C_num).squaredNorm();
+
+    if (!relative) {
+        return theta_abs;
+    } else {
+        const double denom = std::max(1e-300, C_dok.squaredNorm());
+        return std::sqrt(theta_abs / denom); // если нужно без корня — замени на (theta_abs / denom)
+    }
 }
 
-    return std::sqrt(num / den);
-}
+
 
 
 std::optional<double> compute_e_true(const SpectralData& spectral,
@@ -125,7 +142,8 @@ void write_step_csv_row(std::ofstream& f,
                         double dt_ms,
                         double matvecs,
                         double norm_err,
-                        double theta,
+                        double theta_rel,
+                        double theta_abs,
                         std::optional<double> e_true,
                         std::optional<int> K_used,
                         std::optional<double> bn_ratio,
@@ -138,7 +156,8 @@ void write_step_csv_row(std::ofstream& f,
         << std::fixed << std::setprecision(3) << dt_ms << ','
         << std::defaultfloat << matvecs << ','
         << std::scientific << std::setprecision(6) << norm_err << ','
-        << std::scientific << std::setprecision(6) << theta;
+        << std::scientific << std::setprecision(6) << theta_rel << ','
+        << std::scientific << std::setprecision(6) << theta_abs;
 
     if (include_cheb_extras) {
         if (K_used) {
@@ -168,9 +187,11 @@ void print_step_console(const std::string& method,
                         double dt_ms,
                         double matvecs,
                         double norm_err,
-                        double theta,
+                        double theta_rel,
+                        double theta_abs,
                         std::optional<double> e_true,
-                        std::optional<int> K_used) {
+                        std::optional<int> K_used) 
+                        {
     std::ostringstream line;
     line << '[' << method << "] "
          << "step=" << step
@@ -178,7 +199,8 @@ void print_step_console(const std::string& method,
          << "  dt_ms=" << std::fixed << std::setprecision(3) << dt_ms
          << "  matvecs=" << format_matvecs(matvecs)
          << "  norm_err=" << std::scientific << std::setprecision(3) << norm_err
-         << "  theta=" << std::scientific << std::setprecision(3) << theta;
+         << "  theta_rel=" << std::scientific << std::setprecision(3) << theta_rel
+         << "  theta_abs=" << std::scientific << std::setprecision(3) << theta_abs;
 
     if (e_true) {
         line << "  Etrue=" << std::scientific << std::setprecision(3) << *e_true;
