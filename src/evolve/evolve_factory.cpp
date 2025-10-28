@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <limits>
 #include <memory>
@@ -216,6 +217,15 @@ void evolve(const std::string& method,
         }
 
 
+    }
+
+    if (enable_csv) {
+        if (csv.is_open()) {
+            csv.close();
+        }
+        if (!validate_step_csv(csv_path, is_cheb)) {
+            std::exit(2);
+        }
     }
 }
 

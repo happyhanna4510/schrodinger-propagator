@@ -126,12 +126,18 @@ std::optional<double> compute_e_true(const SpectralData& spectral,
     return numer;
 }
 
-void write_step_csv_header(std::ofstream& f, bool include_cheb_extras) {
-    f << "method,step,t,dt,dt_ms,matvecs,norm_err,theta";
+std::string make_step_csv_header(bool include_cheb_extras) {
+    std::string header =
+        "method,step,t,dt,dt_ms,matvecs,norm_err,theta_rel,theta_abs";
     if (include_cheb_extras) {
-        f << ",K_used,bn_ratio";
+        header += ",K_used,bn_ratio";
     }
-    f << ",e_true\n";
+    header += ",e_true";
+    return header;
+}
+
+void write_step_csv_header(std::ofstream& f, bool include_cheb_extras) {
+    f << make_step_csv_header(include_cheb_extras) << '\n';
 }
 
 void write_step_csv_row(std::ofstream& f,
@@ -179,6 +185,64 @@ void write_step_csv_row(std::ofstream& f,
 
     row << '\n';
     f << row.str();
+}
+
+namespace {
+void rtrim_cr(std::string& line) {
+    if (!line.empty() && line.back() == '\r') {
+        line.pop_back();
+    }
+}
+} // namespace
+
+bool validate_step_csv(const std::string& path, bool include_cheb_extras) {
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        std::cerr << "error: failed to open CSV for validation: " << path << '\n';
+        return false;
+    }
+
+    const std::string expected_header = make_step_csv_header(include_cheb_extras);
+    const std::size_t expected_fields =
+        static_cast<std::size_t>(std::count(expected_header.begin(),
+                                            expected_header.end(), ',') + 1);
+
+    std::string line;
+    if (!std::getline(in, line)) {
+        std::cerr << "error: CSV file is empty: " << path << '\n';
+        return false;
+    }
+    rtrim_cr(line);
+    if (line != expected_header) {
+        std::cerr << "error: CSV header mismatch. expected '" << expected_header
+                  << "' but found '" << line << "'\n";
+        return false;
+    }
+
+    std::size_t line_number = 1;
+    while (std::getline(in, line)) {
+        ++line_number;
+        rtrim_cr(line);
+        const auto pos = line.find_first_not_of(" \t");
+        if (pos == std::string::npos) {
+            continue; // skip empty or whitespace-only lines
+        }
+
+        std::size_t field_count = 1;
+        for (char c : line) {
+            if (c == ',') {
+                ++field_count;
+            }
+        }
+
+        if (field_count != expected_fields) {
+            std::cerr << "error: CSV row " << line_number << " has " << field_count
+                      << " fields, expected " << expected_fields << "\n";
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void print_step_console(const std::string& method,

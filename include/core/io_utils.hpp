@@ -36,6 +36,8 @@ void write_step_csv_row(std::ofstream& f,
                         std::optional<double> bn_ratio,
                         bool include_cheb_extras);
 
+bool validate_step_csv(const std::string& path, bool include_cheb_extras);
+
 void print_step_console(const std::string& method,
                         int step,
                         double t,
