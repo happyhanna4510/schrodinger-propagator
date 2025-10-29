@@ -9,7 +9,8 @@ constexpr std::complex<double> I(0.0, 1.0);
 }
 
 Rk4Evolver::Rk4Evolver(const Tridiag& T, const EvolverConfig& cfg)
-    : EvolverBase(T, cfg) {
+    : EvolverBase(T, cfg) 
+    {
     const Eigen::Index n = T.a.size();
     k1_.resize(n);
     k2_.resize(n);
@@ -18,7 +19,8 @@ Rk4Evolver::Rk4Evolver(const Tridiag& T, const EvolverConfig& cfg)
     tmp_.resize(n);
 }
 
-StepResult Rk4Evolver::step(Eigen::VectorXcd& psi) {
+StepResult Rk4Evolver::step(Eigen::VectorXcd& psi) 
+{
     if (k1_.size() != psi.size()) {
         const Eigen::Index n = psi.size();
         k1_.resize(n);
@@ -50,7 +52,7 @@ StepResult Rk4Evolver::step(Eigen::VectorXcd& psi) {
     psi.noalias() += (cfg_.dt / 6.0) * sum;
 
     StepResult result;
-    result.matvecs = 4;
+    result.matvecs = 4; //rk4 zawsze używa 4 mnożeń macierz–wektor
     return result;
 }
 

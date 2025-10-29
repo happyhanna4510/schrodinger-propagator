@@ -14,11 +14,6 @@ double compute_theta(const SpectralData& S,
                      bool relative = false);
 
 
-
-std::optional<double> compute_e_true(const SpectralData& spectral,
-                                     const Eigen::VectorXcd& psi,
-                                     double t);
-
 void write_step_csv_header(std::ofstream& f, bool include_cheb_extras);
 
 void write_step_csv_row(std::ofstream& f,
@@ -31,7 +26,6 @@ void write_step_csv_row(std::ofstream& f,
                         double norm_err,
                         double theta_rel,
                         double theta_abs,
-                        std::optional<double> e_true,
                         std::optional<int> K_used,
                         std::optional<double> bn_ratio,
                         bool include_cheb_extras);
@@ -44,6 +38,5 @@ void print_step_console(const std::string& method,
                         double norm_err,
                         double theta_rel,
                         double theta_abs,
-                        std::optional<double> e_true,
                         std::optional<int> K_used);
 

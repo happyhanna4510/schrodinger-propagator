@@ -189,13 +189,12 @@ void evolve(const std::string& method,
                 theta_rel = compute_theta(spectral, psi, t, dx, /*relative=*/true);
                 theta_abs = compute_theta(spectral, psi, t, dx, /*relative=*/false);
 
-                e_true = compute_e_true(spectral, psi, t);
             }
             const int step_out = step + 1;
 
             if (csv.is_open() && ((cfg.csv_every <= 1) || (tick_counter % cfg.csv_every) == 0)) {
                 write_step_csv_row(csv, method_norm, step_out, t, dt, stats.dt_ms,
-                                   stats.matvecs, stats.norm_err, theta_rel, theta_abs, e_true,
+                                   stats.matvecs, stats.norm_err, theta_rel, theta_abs,
                                    stats.K_used, stats.bn_ratio, is_cheb);
                 ++csv_rows;
                 if (cfg.flush_every > 0 && (csv_rows % cfg.flush_every) == 0) {
@@ -205,7 +204,7 @@ void evolve(const std::string& method,
 
             if (!quiet && cfg.log_every > 0) {
                 print_step_console(method_norm, step_out, t, stats.dt_ms, stats.matvecs,
-                                   stats.norm_err, theta_rel, theta_abs, e_true, stats.K_used);
+                                   stats.norm_err, theta_rel, theta_abs, stats.K_used);
             }
             if (wide.enabled()) {
                 wide.write(psi, t);

@@ -13,17 +13,15 @@
 
 namespace fs = std::filesystem;
 
-// Печать таблицы энергий: num vs analytic
 void print_energy_table(const std::vector<double>& Eval,
                         const std::vector<double>& Eanal,
                         int first);
 
-// Проекция psi на первые k собственных векторов
+// projections onto eigenstates
 std::vector<double> populations(const Eigen::MatrixXd& EV,
                                 const Eigen::VectorXd& psi,
                                 int k, double dx);
 
-// --- CSV writers: принимают fs::path ---
 void save_xy_csv(const fs::path& path,
                  const std::vector<double>& x,
                  const std::vector<double>& y,
@@ -46,14 +44,13 @@ void save_vector_csv(const fs::path& path,
 namespace io {
 namespace fs = std::filesystem;
 
-// ТОЛЬКО объявление (без inline и без тела)
+
 fs::path make_csv_path(const fs::path& out_dir,
                        const Params& P,
                        const std::string& method,
                        int K, double dt,
                        const Grid& g);
 
-// Объявление класса (без тел методов)
 class WideDump {
 public:
     WideDump(const fs::path& csv_path,

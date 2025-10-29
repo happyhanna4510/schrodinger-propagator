@@ -43,13 +43,16 @@ Thumbs.db
 # Results, figures, notebooks cache
 # Держим папки, игнорим их содержимое
 results/**
-!results/.gitkeep
+!results/
+!results/**/
+!results/**/.gitkeep
 
-figures/**
-!figures/.gitkeep
-
+# Plots
 plots_out/**
-!plots_out/.gitkeep
+!plots_out/
+!plots_out/**/
+!plots_out/**/.gitkeep
+
 
 .ipynb_checkpoints/
 
