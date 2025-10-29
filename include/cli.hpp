@@ -7,7 +7,7 @@ struct Params {
     double gamma    = 10.0;
     double Umax     = 0.1;
 
-    // эволюция
+    // evolution parameters
     bool   do_evolve     = false;
     std::string evolve_method = "taylor";
     int    K         = 4;
@@ -20,20 +20,16 @@ struct Params {
     int    flush_every = 1000;
     bool   no_theta    = false;
 
-    // выводы
     int    first     = 10;
     std::string outdir   = "results";
-    std::string csv_name;  // пусто по умолчанию
+    std::string csv_name;  
 
 
-    // НОВЫЕ ФЛАГИ
-    bool evolve_only = false;   // пропустить статическую часть, если морс уже есть
-    bool quiet       = false;   // не печатать таблицы/мониторинг
-    bool no_wide     = false;   // не писать psi_*_wide.csv
-    bool wide_re     = false;   // писать Re[psi] в wide CSV
-    bool wide_im     = false;   // писать Im[psi] в wide CSV
-    bool log_p0      = false;    //не добавлять колонку p0 в лог
-    bool log_err_exact = false;  // не добавлять колонку err_exact
+    bool evolve_only = false;   // bez generowania potencjału i stanu początkowego
+    bool quiet       = false;   // nie wypisywać informacji na konsolę
+    bool wide     = false;   // zapisywać |psi|^2 do pliku wide CSV
+    bool wide_re     = false;   //  pisać Re[psi] w wide CSV
+    bool wide_im     = false;   //  pisać Im[psi] w wide CSV
 
 };
 

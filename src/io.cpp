@@ -9,7 +9,8 @@
 using std::cout; using std::setw; using std::setprecision; using std::fixed;
 
 void print_energy_table(const std::vector<double>& Eval,
-                        const std::vector<double>& Eanal, int first) {
+                        const std::vector<double>& Eanal, int first) 
+{
     cout << " n  " << setw(16) << "E_num" << setw(16) << "E_anal"
          << setw(16) << "abs diff" << "\n";
     int m = std::min((int)Eval.size(), (int)Eanal.size());
@@ -23,7 +24,8 @@ void print_energy_table(const std::vector<double>& Eval,
 }
 
 std::vector<double> populations(const Eigen::MatrixXd& EV,
-                                const Eigen::VectorXd& psi, int k, double dx) {
+                                const Eigen::VectorXd& psi, int k, double dx) 
+{
     int K = std::min(k, (int)EV.cols());
     std::vector<double> pop(K,0.0);
     for (int j=0;j<K;j++){
@@ -34,7 +36,8 @@ std::vector<double> populations(const Eigen::MatrixXd& EV,
 }
 
 // --- CSV writers on wide-safe paths ---
-static std::ofstream open_ofs(const fs::path& p) {
+static std::ofstream open_ofs(const fs::path& p) 
+{
     std::ofstream f(p, std::ios::binary);
     if (!f) {
         std::wcerr << L"[io] cannot open for write: " << p.wstring() << std::endl;
@@ -46,7 +49,8 @@ void save_xy_csv(const fs::path& path,
                  const std::vector<double>& x,
                  const std::vector<double>& y,
                  const std::string& colx,
-                 const std::string& coly) {
+                 const std::string& coly) 
+{
     std::ofstream f = open_ofs(path);
     if (!f) return;
     f << colx << "," << coly << "\n";
@@ -59,7 +63,8 @@ void save_matrix_csv(const fs::path& path,
                      const Eigen::MatrixXd& cols,
                      int first_cols,
                      const std::string& colx,
-                     const std::string& base) {
+                     const std::string& base) 
+{
     int M = (int)x.size();
     int K = std::min(first_cols, (int)cols.cols());
     std::ofstream f = open_ofs(path);
@@ -76,7 +81,8 @@ void save_matrix_csv(const fs::path& path,
 
 void save_vector_csv(const fs::path& path,
                      const std::vector<double>& v,
-                     const std::string& col) {
+                     const std::string& col) 
+{
     std::ofstream f = open_ofs(path);
     if (!f) return;
     f << col << "\n";
@@ -86,24 +92,20 @@ void save_vector_csv(const fs::path& path,
 
 
 
-static std::string fmt_dt_for_filename(double dt) {
-    // считаем, что dt > 0; при нуле вернём "0"
+static std::string fmt_dt_for_filename(double dt) 
+{
     if (dt == 0.0) return "0";
 
-    // проверка "dt — степень десяти" с малой погрешностью двойной точности
     const double log10v = std::log10(dt);
     const long long e   = std::llround(log10v);
     const double pow10e = std::pow(10.0, (double)e);
     const double relerr = std::fabs(dt - pow10e) / dt;
 
     if (relerr < 1e-12) {
-        // это точно 10^e → печатаем "1e-4" (без + и ведущих нулей)
         if (e == 0) return "1";
         return std::string("1e") + (e < 0 ? "" : "") + std::to_string(e);
-        // для положительных экспонент получится "1e3", для отрицательных — "1e-4"
     }
 
-    // иначе — компактно, как у тебя
     std::ostringstream os;
     os << std::setprecision(6) << std::defaultfloat << dt;
     return os.str();
@@ -143,7 +145,6 @@ void write_component_row(std::ofstream& f, const Eigen::VectorXcd& psi, double t
 
 } // namespace
 
-// РЕАЛИЗАЦИЯ (без inline)
 fs::path make_csv_path(const fs::path& out_dir,
                        const Params& P,
                        const std::string& method,
@@ -154,7 +155,7 @@ fs::path make_csv_path(const fs::path& out_dir,
 
     auto fmtg = [](double v){
         std::ostringstream os;
-        os << std::setprecision(6) << std::defaultfloat << v; // компактно
+        os << std::setprecision(6) << std::defaultfloat << v; 
         return os.str();
     };
 
@@ -175,7 +176,7 @@ fs::path make_csv_path(const fs::path& out_dir,
     return out_dir / (stem.str() + ".csv");
 }
 
-// Конструктор WideDump — РЕАЛИЗАЦИЯ
+
 WideDump::WideDump(const fs::path& csv_path,
                    const std::vector<double>* x_inner,
                    bool write_re, bool write_im)
@@ -206,7 +207,8 @@ WideDump::WideDump(const fs::path& csv_path,
     }
     f_abs_ << std::setprecision(16);
 
-    if (write_re_) {
+    if (write_re_) 
+    {
         f_re_.open(p_re_, std::ios::out | std::ios::trunc);
         if (!f_re_) {
             std::wcerr << L"[io] cannot open wide file: " << p_re_.wstring() << std::endl;
@@ -216,7 +218,8 @@ WideDump::WideDump(const fs::path& csv_path,
         }
     }
 
-    if (write_im_) {
+    if (write_im_) 
+    {
         f_im_.open(p_im_, std::ios::out | std::ios::trunc);
         if (!f_im_) {
             std::wcerr << L"[io] cannot open wide file: " << p_im_.wstring() << std::endl;
@@ -227,7 +230,8 @@ WideDump::WideDump(const fs::path& csv_path,
     }
 }
 
-void WideDump::write(const Eigen::VectorXcd& psi, double t) {
+void WideDump::write(const Eigen::VectorXcd& psi, double t) 
+{
     if (!enabled()) {
         return;
     }

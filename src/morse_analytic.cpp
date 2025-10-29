@@ -3,13 +3,16 @@
 #include <cmath>
 #include <algorithm>
 
-int morse_nmax(double gamma){
-    // максимально допустимый n для связанных уровней
+//maksymalny dozwolony numer n dla stanów związanych 
+int morse_nmax(double gamma)
+{
     int nmax = (int)std::floor(gamma - 0.5 - 1e-12);
-    return std::max(nmax, -1); // -1 если gamma<=0.5 (нет связанных)
+    return std::max(nmax, -1); 
 }
 
-std::vector<double> morse_energies(double gamma, int how_many){
+//pierwsze 'how_many' energii E_n dla oscylatora Morse’a
+std::vector<double> morse_energies(double gamma, int how_many)
+{
     int nmax = morse_nmax(gamma);
     int m = std::min(how_many, std::max(nmax+1, 0));
     std::vector<double> E; E.reserve(m);

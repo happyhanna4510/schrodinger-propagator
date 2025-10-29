@@ -5,7 +5,10 @@
 #include <complex>
 #include <iostream>
 
-Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H) {
+// tworzy strukturę trójdiagonalną (wektory a,b,c) z gęstej macierzy H
+// kopiując diagonalę oraz pod/naddiagonalę
+Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H) 
+{
     const int M = static_cast<int>(H.rows());
     const int off_size = std::max(0, M - 1);
     Tridiag T{Eigen::VectorXd(M), Eigen::VectorXd(off_size), Eigen::VectorXd(off_size)};
@@ -17,7 +20,11 @@ Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H) {
     return T;
 }
 
-double l2_norm_sq(const Eigen::VectorXcd& v, double dx) {
+
+// oblicza kwadrat normy L2 wektora zespolonego z wagą siatki dx
+// sum_i |v_i|^2 * dx 
+double l2_norm_sq(const Eigen::VectorXcd& v, double dx) 
+{
     long double sum = 0.0L;
     for (Eigen::Index i = 0; i < v.size(); ++i) {
         sum += std::norm(v[i]);
@@ -25,17 +32,20 @@ double l2_norm_sq(const Eigen::VectorXcd& v, double dx) {
     return static_cast<double>(sum * static_cast<long double>(dx));
 }
 
+//pierwiastek z l2_norm_sq
 double l2_norm(const Eigen::VectorXcd& v, double dx) {
     return std::sqrt(std::max(0.0, l2_norm_sq(v, dx)));
 }
 
+//iloczyn skalarny wektorów zespolonych z wagą dx
 std::complex<double> inner_dx(const Eigen::VectorXcd& a,
                               const Eigen::VectorXcd& b,
                               double dx) {
     return dx * a.dot(b);
 }
 
-double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx) {
+double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx) 
+{
     double s = 0.0;
     for (int i = i0; i < i1; ++i) {
         s += std::norm(psi[i]);
@@ -43,9 +53,11 @@ double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx) {
     return s * dx;
 }
 
+//mnoży macierz trójdiagonalną T przez wektor x i zapisuje wynik w y
 void tridiag_mul(const Tridiag& T,
                  const Eigen::VectorXcd& x,
-                 Eigen::VectorXcd& y) {
+                 Eigen::VectorXcd& y) 
+{
     const int M = static_cast<int>(T.a.size());
     y.resize(M);
 
@@ -65,7 +77,9 @@ void tridiag_mul(const Tridiag& T,
     y[M - 1] = T.c[M - 2] * x[M - 2] + T.a[M - 1] * x[M - 1];
 }
 
-void maybe_warn_timestep(double dt, double dE, bool quiet) {
+//ostrzeżenie o stabilności kroku czasowego
+void maybe_warn_timestep(double dt, double dE, bool quiet) 
+{
     if (quiet) {
         return;
     }

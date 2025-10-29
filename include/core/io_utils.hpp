@@ -8,10 +8,11 @@
 
 #include "core/spectral.hpp"
 
-double compute_theta(const SpectralData& spectral,
+double compute_theta(const SpectralData& S,
                      const Eigen::VectorXcd& psi,
-                     double t,
-                     double dx);
+                     double t, double dx,
+                     bool relative = false);
+
 
 void write_step_csv_header(std::ofstream& f, bool include_cheb_extras);
 
@@ -23,7 +24,8 @@ void write_step_csv_row(std::ofstream& f,
                         double dt_ms,
                         double matvecs,
                         double norm_err,
-                        double theta,
+                        double theta_rel,
+                        double theta_abs,
                         std::optional<int> K_used,
                         std::optional<double> bn_ratio,
                         bool include_cheb_extras);
@@ -34,6 +36,7 @@ void print_step_console(const std::string& method,
                         double dt_ms,
                         double matvecs,
                         double norm_err,
-                        double theta,
+                        double theta_rel,
+                        double theta_abs,
                         std::optional<int> K_used);
 

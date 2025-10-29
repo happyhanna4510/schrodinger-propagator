@@ -11,7 +11,8 @@ using cplx = std::complex<double>;
 
 SpectralData make_spectral_data(const Eigen::MatrixXd& H,
                                 const Eigen::VectorXcd& psi_init,
-                                double dx) {
+                                double dx) 
+{
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(H);
     if (es.info() != Eigen::Success) {
         throw std::runtime_error("eigensolve failed");

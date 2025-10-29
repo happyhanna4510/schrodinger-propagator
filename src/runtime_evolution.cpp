@@ -42,8 +42,11 @@ fs::path run_time_evolution(const Grid& g,
     Eigen::MatrixXd H_evol = build_hamiltonian(g, U_evol);
     Tridiag T = make_tridiag_from_dense(H_evol);
 
+
     Eigen::VectorXcd psi_init = gaussian_on_inner(g, 1.0, 0.35).cast<std::complex<double>>();
 
+
+    
     int    K      = (P.K > 0 ? P.K : 4);
     double dt     = (P.dt > 0 ? P.dt : 1e-6);
     double tmax   = (P.tmax > 0 ? P.tmax : 1e-3);
@@ -58,7 +61,7 @@ fs::path run_time_evolution(const Grid& g,
 
     std::vector<double> x_inner;
     const std::vector<double>* x_ptr = nullptr;
-    if (!P.no_wide) {
+    if (P.wide) {
         x_inner.resize(g.N - 2);
         for (int i = 0; i < g.N - 2; ++i) {
             x_inner[i] = g.x[i + 1];

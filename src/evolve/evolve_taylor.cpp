@@ -12,7 +12,8 @@ void taylor_step_tridiag(const Tridiag& T,
                          Eigen::VectorXcd& psi,
                          double dt,
                          int K,
-                         TaylorWorkspace& workspace) {
+                         TaylorWorkspace& workspace) 
+                         {
     workspace.resize(psi.size());
     auto& sum = workspace.sum();
     auto& vk  = workspace.vk();
@@ -37,7 +38,8 @@ TaylorEvolver::TaylorEvolver(const Tridiag& T, const EvolverConfig& cfg)
     workspace_.resize(T.a.size());
 }
 
-StepResult TaylorEvolver::step(Eigen::VectorXcd& psi) {
+StepResult TaylorEvolver::step(Eigen::VectorXcd& psi)
+ {
     workspace_.resize(psi.size());
     taylor_step_tridiag(T_, psi, cfg_.dt, cfg_.K, workspace_);
 

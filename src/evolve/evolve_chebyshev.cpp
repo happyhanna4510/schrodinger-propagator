@@ -7,7 +7,8 @@
 
 #include "core/math_utils.hpp"
 
-namespace {
+namespace 
+{ //i = sqrt(-1)
 constexpr std::complex<double> I(0.0, 1.0);
 constexpr double EPS = 1e-14;
 }
@@ -15,21 +16,29 @@ constexpr double EPS = 1e-14;
 ChebyshevEvolver::ChebyshevEvolver(const Tridiag& T,
                                    const SpectralData& spectral,
                                    const EvolverConfig& cfg)
-    : EvolverBase(T, cfg) {
+    : EvolverBase(T, cfg) 
+{
+    //ekstrema widma min i maks energia
     Emin_ = spectral.evals.minCoeff();
     Emax_ = spectral.evals.maxCoeff();
+    //szerokość przedziału widma i jego środek
     deltaE_ = Emax_ - Emin_;
     center_ = 0.5 * (Emax_ + Emin_);
 
+    //gdy widmo jest praktycznie punktowe
     const double scale_ref = std::max({1.0, std::abs(Emin_), std::abs(Emax_)});
     trivial_case_ = std::abs(deltaE_) <= EPS * scale_ref;
 
-    if (!trivial_case_) {
+    if (!trivial_case_) 
+    {//współczynnik normalizacji do zakresu [-1, 1] dla wielomianów Czebyszewa
         norm_factor_ = 2.0 / deltaE_;
+        // x dla współczynników Bessela J_n(x) 
         x_ = (deltaE_ * cfg_.dt) / (2.0 * cfg_.hbar);
+        //globalna faza
         phase_ = std::exp(-I * ((0.5 * deltaE_ + Emin_) * cfg_.dt) / cfg_.hbar);
 
-    } else {
+    } else 
+    {
         norm_factor_ = 0.0;
         x_ = 0.0;
         phase_ = {1.0, 0.0};
@@ -44,16 +53,19 @@ ChebyshevEvolver::ChebyshevEvolver(const Tridiag& T,
 }
 
 void ChebyshevEvolver::apply_normalized(const Eigen::VectorXcd& in,
-                                        Eigen::VectorXcd& out) {
+                                        Eigen::VectorXcd& out) 
+{
     tridiag_mul(T_, in, out);
     out.noalias() -= center_ * in;
     out *= norm_factor_;
 }
 
-StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
+StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) 
+{
     StepResult result;
 
-    if (trivial_case_) {
+    if (trivial_case_) //bez matveców
+    {
         psi *= trivial_phase_;
         result.matvecs = 0;
         result.K_used = 1;
@@ -68,7 +80,7 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
         tmp_.resize(n);
     }
 
-    const int max_safe = 10000; // защита от зависания
+    const int max_safe = 10000; //zabezpieczenie przed zapętleniem
 
     p_prev_ = psi;
 
@@ -81,7 +93,7 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
     std::complex<double> i_pow(1.0, 0.0); // (-i)^0
 
     for (int n = 1; n < max_safe; ++n) {
-        // рекуррентное построение T_n
+        //rekurencja Czebyszewa
         if (n == 1) {
             apply_normalized(p_prev_, p_curr_);
         } else {
@@ -95,10 +107,9 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
         i_pow *= -I; // (-i)^n
 
         const double Jn = std::cyl_bessel_j(n, x_);
-        const std::complex<double> bn = 2.0 * i_pow * Jn; // (2−δ_{n0}), для n≥1 коэффициент 2
+        const std::complex<double> bn = 2.0 * i_pow * Jn; 
         const double abs_bn = std::abs(bn);
 
-        // обновляем максимум
         if (abs_bn > bn_abs_max) {
             bn_abs_max = abs_bn;
         }
@@ -106,11 +117,10 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
         double ratio = (bn_abs_max > 0.0) ? abs_bn / bn_abs_max : 0.0;
         last_ratio = ratio;
 
-        // добавляем вклад
         accum.noalias() += bn * p_curr_;
         ++terms;
 
-        // проверка остановки по толерантности
+        //ratio < tolerance -przerwij
         if (cfg_.tolerance > 0.0 && ratio < cfg_.tolerance) {
             break;
         }
@@ -118,7 +128,7 @@ StepResult ChebyshevEvolver::step(Eigen::VectorXcd& psi) {
 
 
     psi = phase_ * accum;
-
+    //liczba matveców
     result.matvecs = std::max(0, terms - 1);
     result.K_used = terms;
     result.bn_ratio = last_ratio;
