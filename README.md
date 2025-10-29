@@ -118,7 +118,7 @@ Dodatkowe wskazówki:
 ### Skrypty PowerShell
 
 Katalog `scripts/` zawiera wsadowe uruchamiacze dla przeglądów metod Taylora, RK4 i Czebyszewa. Możesz je uruchamiać w PowerShell 5.1+ na Windowsie oraz w PowerShell 7 (`pwsh`) na Linuksie/macOS; skrypty automatycznie wykrywają `morse.exe`, tworzą katalogi wyników dla każdej metody i startują zadania równoległe przy przypięciu zmiennych BLAS/OpenMP do jednego wątku.
-Przykład (PowerShell w Windows):
+Przykład (PowerShell 7 w Windows):
 
 ```powershell 7
 pwsh -File scripts/run_taylor.ps1
