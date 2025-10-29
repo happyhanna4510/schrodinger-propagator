@@ -12,6 +12,7 @@ Symulator C++17 do jednowymiarowej ewolucji funkcji falowej w potencjale Morse�
 - [Uruchamianie symulacji](#uruchamianie-symulacji)
   - [Przykładowe polecenia](#przykładowe-polecenia)
   - [Skrypty PowerShell](#skrypty-powershell)
+- [Analiza i wykresy (Python)](#analiza-i-wykresy-python)
 - [Parametry konfiguracyjne](#parametry-konfiguracyjne)
 - [Wyjścia i logowanie](#wyjścia-i-logowanie)
 - [Licencja](#licencja)
@@ -129,9 +130,9 @@ Na Linuksie zainstaluj PowerShell 7 (`sudo apt install powershell`) i uruchom id
 
 ## Analiza i wykresy (Python)
 
-Skrypt **`scripts/plot_compare_methods.py`** porównuje przebiegi metod **Taylor**, **RK4** i **Chebyshev** na podstawie logów CSV i generuje wykresy metryk **`norm_err`** oraz **`theta_abs`** (skala logarytmiczna).  
-Dla Taylora automatycznie wybiera „najlepsze K” dla pary `(gamma, dt)` na podstawie minimalnego końcowego `theta_abs`.
-
+Ten rozdział opisuje **dwa niezależne skrypty** do wizualizacji:  
+1) porównanie metod ewolucji (**Taylor / RK4 / Chebyshev**),  
+2) wykres potencjału **Morse’a** z poziomami energii.
 
 ### Wymagania
 
@@ -151,39 +152,68 @@ python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -U pip pandas matplotlib numpy
 ```
 
-#### Uruchomienie
+## 1) Porównanie metod: `scripts/plot_compare_methods.py`
 
-Parametry:
+**Co robi:** przeszukuje logi (`.csv/.tsv/.log`) i rysuje metryki **`norm_err`** i **`theta_abs`** (log-skala).  
+Dla Taylora automatycznie wybiera „**najlepsze K**” dla pary `(gamma, dt)` po **minimalnym końcowym `theta_abs`** (z tie-breakiem po średnim `matvecs`).
 
-- --root — katalog z logami (przeszukiwany rekurencyjnie; obsługa .csv/.tsv/*.log)
-- --out — folder wyjściowy na wykresy (domyślnie ./plots_out)
-- --dpi — rozdzielczość plików PNG (domyślnie 140)
-- --verbose — dodatkowa diagnostyka
+**Najważniejsze parametry:**
+- `--root` – katalog z logami (rekurencyjnie).
+- `--out` – folder wyjściowy (domyślnie `./plots_out`).
+- `--dpi` – DPI PNG (domyślnie 140).
+- `--verbose` – dodatkowa diagnostyka.
 
-
-#### Przykłady
-
-##### Linux / macOS
+**Uruchomienie**
 ```bash
+# Linux / macOS
 python scripts/plot_compare_methods.py --root results --out plots_out --dpi 160 --verbose
 ```
-
-##### Windows (PowerShell):
-```bash
+```powershell
+# Windows (PowerShell)
 python .\scripts\plot_compare_methods.py --root .\results --out .\plots_out --dpi 160 --verbose
 ```
 
-Wykresy PNG zapisywane są w katalogu **plots_out/**
+**Wynik / nazewnictwo plików (plots_out/):**
+- `cmp_gamma<g>_dt<dt>_norm_err.png`
+- `cmp_gamma<g>_dt<dt>_theta_abs.png`
 
-Nazwy plików:
+Konsola (przykład):
+```
+[INFO] gamma=10 dt=1e-4: Taylor K=6 (final theta_abs=8.75e-13, mean matvecs=4.00)
+```
 
-- cmp_gamma<g>_dt<dt>_norm_err.png
-- cmp_gamma<g>_dt<dt>_theta_abs.png
+## 2) Potencjał Morse’a: `scripts/plot_morse.py`
 
+**Co robi:** rysuje potencjał Morse’a (bezwymiarowy, asymptota \(U(+\infty)=1\)) oraz **poziomy energii** wyliczane z **γ (gamma)**.  
+Obsługuje **autodetekcję** `morse_potential.csv` w układzie `results/morse/g<gamma>/...`.  
+> Uwaga: **bez dodatkowych patchy wykres nie zapisuje się automatycznie** – użyj `--save`.
 
-Konsola wypisuje krótkie podsumowania, np.:
+**Parametry:**
+- `--gamma <float>` – rysuj poziomy energii dla γ.
+- `--levels <int>` – liczba poziomów (domyślnie maksimum dla danej γ).
+- `--no-levels` – wyłącz poziomy, nawet jeśli podano `--gamma`.
+- `--root <dir>` – katalog bazowy na dane (np. `results/morse`; skrypt szuka podfolderów `g<gamma>`).
+- `--csv <path>` – jawna ścieżka do `morse_potential.csv` (pomija autodetekcję).
+- `--xleft/--xright` lub `--xmax` – zakres X (np. `--xleft 0 --xright 30`).
+- `--ymin/--ymax` – zakres Y (opcjonalnie).
+- `--asymptote` – dorysuj linię \(U=1\).
+- `--grid` – siatka.
+- `--title <txt>` – tytuł.
+- `--save <png>` – ścieżka zapisu **względem bieżącego katalogu uruchomienia** (CWD).
 
->[INFO] gamma=10 dt=1e-4: Taylor K=6 (final theta_abs=8.75e-13, mean matvecs=4.00)
+> **Zapis pliku:** jeśli uruchamiasz z `scripts/`, to `--save plots_out\...` trafi do `scripts\plots_out\...`.  
+> Aby zapisać do `plots_out` w **katalogu głównym repo**, użyj:
+> - z `scripts/`: `--save ..\plots_out\morse_g10.png`
+
+**Uruchomienie (przykłady)**
+
+```bash
+# Linux / macOS — γ = 10 (studnia + poziomy + asymptota)
+python scripts/plot_morse.py --gamma 10 --root results/morse   --xleft 0 --xright 30 --grid --asymptote   --title "Potencjał Morse’a (γ=10)" --save plots_out/morse_g10.png
+
+# γ = 20 (dużo poziomów → ogranicz do 12)
+python scripts/plot_morse.py --gamma 20 --levels 12 --root results/morse   --xleft 0 --xright 30 --grid --asymptote   --title "Potencjał Morse’a (γ=20, 12 poziomów)" --save plots_out/morse_g20.png
+```
 
 
 ## Parametry konfiguracyjne
