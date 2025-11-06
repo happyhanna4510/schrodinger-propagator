@@ -6,6 +6,12 @@ struct Params {
     double xmax     = 30.0;
     double gamma    = 10.0;
     double Umax     = 0.1;
+    std::string init      = "complex-gauss";
+    double x0              = 0.0;
+    double sigma           = 1.0;
+    double k0              = 10.0;
+    double U0              = 0.0;
+    bool   k0_specified    = false;
 
     // evolution parameters
     bool   do_evolve     = false;

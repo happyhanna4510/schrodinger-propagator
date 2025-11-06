@@ -1,12 +1,13 @@
 #include "hamiltonian.hpp"
 #include <cassert>
 
-Eigen::MatrixXd build_hamiltonian(const Grid& g, const std::vector<double>& U)
+Eigen::MatrixXd build_hamiltonian(const Grid& g, const std::vector<double>& U, double U0)
 {
     assert((int)U.size()==g.N);
     const int M = g.N - 2;          // liczba punktów wewnętrznych (bez brzegów)
     const double dx = g.dx;
     const double invdx2 = 1.0/(dx*dx);
+    const double field_coeff = (g.xmax != 0.0) ? (U0 / g.xmax) : 0.0;
 
     Eigen::MatrixXd H = Eigen::MatrixXd::Zero(M, M);
     //  (schemat 3-punktowy)
@@ -15,7 +16,8 @@ Eigen::MatrixXd build_hamiltonian(const Grid& g, const std::vector<double>& U)
 
     for (int i=0;i<M;i++)
     {
-        H(i,i) = diagK + U[i+1];     // + U  odpowiadającym punkcie wewnętrznym
+        double x_inner = g.x[i + 1];
+        H(i,i) = diagK + U[i+1] + field_coeff * x_inner;     // + U  odpowiadającym punkcie wewnętrznym
         if (i>0)   H(i, i-1) = offK;
         if (i<M-1) H(i, i+1) = offK;
     }
