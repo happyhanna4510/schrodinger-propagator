@@ -64,6 +64,7 @@ Params parse_args(int argc, char** argv) {
 
         else if (s == "--aggregate") p.aggregate = true;
         else if (s == "--no-theta") p.no_theta = true;
+        else if (s == "--profile") p.profile = true;
 
         else {
             std::cerr << "warning: unknown option: " << s << "\n";

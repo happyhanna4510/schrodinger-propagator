@@ -30,6 +30,7 @@ struct Params {
     bool wide     = false;   // zapisywać |psi|^2 do pliku wide CSV
     bool wide_re     = false;   //  pisać Re[psi] w wide CSV
     bool wide_im     = false;   //  pisać Im[psi] w wide CSV
+    bool profile     = false;   // wypisywać profilowanie integratora
 
 };
 

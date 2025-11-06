@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -113,7 +114,8 @@ void evolve(const std::string& method,
             int csv_every,
             bool aggregate,
             int flush_every,
-            bool no_theta) {
+            bool no_theta,
+            bool profile) {
     const std::string method_norm = normalize_method(method);
     const bool is_cheb = (method_norm == "cheb");
 
@@ -128,6 +130,7 @@ void evolve(const std::string& method,
     cfg.aggregate = aggregate;
     cfg.flush_every = flush_every;
     cfg.no_theta = no_theta;
+    cfg.profile = profile;
 
     std::unique_ptr<EvolverBase> evolver;
 
@@ -161,7 +164,15 @@ void evolve(const std::string& method,
     IntervalAgg agg;
     int tick_counter = 0;
 
-    for (int step = 0; step < nsteps; ++step) 
+    struct ProfileAccumulator {
+        double step_us = 0.0;
+        double work_us = 0.0;
+        double rhs_us = 0.0;
+        long long reallocations = 0;
+        long long samples = 0;
+    } profile_acc;
+
+    for (int step = 0; step < nsteps; ++step)
     {
         const auto start = std::chrono::steady_clock::now();
         StepResult result = evolver->step(psi);
@@ -174,6 +185,14 @@ void evolve(const std::string& method,
         const double norm_err = std::abs(norm_sq - 1.0);
 
         update_interval(agg, dt_ms, result.matvecs, norm_err, result);
+
+        if (cfg.profile && result.profile) {
+            profile_acc.step_us += result.profile->step_us;
+            profile_acc.work_us += result.profile->work_us;
+            profile_acc.rhs_us += result.profile->rhs_us;
+            profile_acc.reallocations += result.profile->reallocations;
+            ++profile_acc.samples;
+        }
 
         const bool tick = (cfg.log_every > 0) &&
                           ((step % cfg.log_every) == 0 || step == 0 || step + 1 == nsteps);
@@ -215,6 +234,17 @@ void evolve(const std::string& method,
         }
 
 
+    }
+
+    if (cfg.profile && profile_acc.samples > 0 && !quiet) {
+        const double inv = 1.0 / static_cast<double>(profile_acc.samples);
+        std::cout << "\n# Profiling averages (" << profile_acc.samples << " steps)\n";
+        std::cout << "#   section        avg time [us]\n";
+        std::cout << "#   step_total     " << profile_acc.step_us * inv << "\n";
+        std::cout << "#   work_total     " << profile_acc.work_us * inv << "\n";
+        std::cout << "#   rhs_matvec     " << profile_acc.rhs_us * inv << "\n";
+        std::cout << "#   reallocations  "
+                  << (profile_acc.reallocations * inv) << "\n";
     }
 }
 

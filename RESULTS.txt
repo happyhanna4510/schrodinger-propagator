@@ -1,0 +1,4 @@
+Method | step_total [ms] | rhs_matvec [ms] | reallocations/step
+--- | --- | --- | ---
+Taylor K=4 | 0.0238 | 0.0111 | 0.0
+RK4 | 0.0302 | 0.0113 | 0.0

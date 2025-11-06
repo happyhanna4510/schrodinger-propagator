@@ -17,7 +17,8 @@ double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx);
 
 void tridiag_mul(const Tridiag& T,
                  const Eigen::VectorXcd& x,
-                 Eigen::VectorXcd& y);
+                 Eigen::VectorXcd& y,
+                 int* reallocations = nullptr);
 
 Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H);
 

@@ -56,10 +56,16 @@ double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx)
 //mnoży macierz trójdiagonalną T przez wektor x i zapisuje wynik w y
 void tridiag_mul(const Tridiag& T,
                  const Eigen::VectorXcd& x,
-                 Eigen::VectorXcd& y) 
+                 Eigen::VectorXcd& y,
+                 int* reallocations)
 {
     const int M = static_cast<int>(T.a.size());
-    y.resize(M);
+    if (y.size() != M) {
+        if (reallocations) {
+            *reallocations += 1;
+        }
+        y.resize(M);
+    }
 
     if (M == 0) {
         return;

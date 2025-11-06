@@ -11,7 +11,8 @@ void taylor_step_tridiag(const Tridiag& T,
                          Eigen::VectorXcd& psi,
                          double dt,
                          int K,
-                         TaylorWorkspace& workspace);
+                         TaylorWorkspace& workspace,
+                         StepProfile* profile = nullptr);
 
 class TaylorEvolver : public EvolverBase {
 public:

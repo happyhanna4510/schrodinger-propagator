@@ -3,12 +3,14 @@
 #include <Eigen/Core>
 
 struct TaylorWorkspace {
-    void resize(Eigen::Index n) {
+    bool resize(Eigen::Index n) {
         if (sum_.size() != n) {
             sum_.resize(n);
             vk_.resize(n);
             tmp_.resize(n);
+            return true;
         }
+        return false;
     }
 
     Eigen::VectorXcd& sum() { return sum_; }

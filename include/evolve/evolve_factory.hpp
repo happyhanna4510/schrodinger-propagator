@@ -26,5 +26,6 @@ void evolve(const std::string& method,
             int csv_every,
             bool aggregate,
             int flush_every,
-            bool no_theta);
+            bool no_theta,
+            bool profile);
 
