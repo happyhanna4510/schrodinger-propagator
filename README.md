@@ -80,8 +80,8 @@ Plik wykonywalny znajdziesz w `build/morse`. Opcjonalnie uruchom test kontrolny:
 Skorzystaj z CMake wraz z MSVC lub MinGW (przykład w PowerShell):
 
 ```powershell
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_FLAGS_RELEASE="/O2 /arch:AVX2 /DNDEBUG /D EIGEN_NO_DEBUG"
-cmake --build . --config Release -j8
+cmake -S . -B build -G "Visual Studio 17 2022" -DENABLE_NATIVE=ON -DENABLE_LTO=ON
+cmake --build build --config Release -j8
 ```
 
 Wynikowy program to `build\Release\morse.exe` (lub `build\morse.exe` dla generatorów jednokonfiguracyjnych). Projekt ustawia `/W4 /O2` dla MSVC i korzysta wyłącznie z nagłówków Eigen, więc nie potrzeba dodatkowych bibliotek.
