@@ -41,13 +41,55 @@ else()
     target_compile_options(morse PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-target_compile_definitions(morse PRIVATE NDEBUG EIGEN_NO_DEBUG)
 
+
+# ---- Опции производительности ----
+option(ENABLE_NATIVE "Enable -march=native (/arch:AVX2 on MSVC) when possible" ON)
+option(ENABLE_LTO    "Enable Link-Time Optimization" OFF)
+option(ENABLE_FAST_MATH "Enable fast-math (unsafe for numerics!)" OFF)
+
+# Флаги по конфигурациям: Debug без оптимизаций, Release/RelWithDebInfo — с оптимизациями
 if (MSVC)
-    target_compile_options(morse PRIVATE /O2)
+  target_compile_options(morse PRIVATE
+    $<$<CONFIG:Release>:/O2>
+    $<$<CONFIG:RelWithDebInfo>:/O2>
+  )
+  # Архитектура
+  if (ENABLE_NATIVE)
+    # На MSVC нет полного аналога -march=native; разумно включить AVX2, если можно
+    target_compile_options(morse PRIVATE /arch:AVX2)
+  endif()
+  # Fast-math (ОПАСНО для численных методов!) — включай, только если знаешь последствия
+  if (ENABLE_FAST_MATH)
+    target_compile_options(morse PRIVATE /fp:fast)
+  endif()
 else()
-    target_compile_options(morse PRIVATE -O3)
+  target_compile_options(morse PRIVATE
+    $<$<CONFIG:Release>:-O3>
+    $<$<CONFIG:RelWithDebInfo>:-O3>
+  )
+  if (ENABLE_NATIVE)
+    target_compile_options(morse PRIVATE -march=native)
+  endif()
+  if (ENABLE_FAST_MATH)
+    target_compile_options(morse PRIVATE -ffast-math -fno-math-errno)
+  endif()
 endif()
+
+# Eigen: выключаем проверки только вне Debug
+target_compile_definitions(morse PRIVATE $<$<NOT:$<CONFIG:Debug>>:EIGEN_NO_DEBUG>)
+
+# LTO
+if (ENABLE_LTO)
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT lto_ok OUTPUT lto_msg)
+  if (lto_ok)
+    set_property(TARGET morse PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+  else()
+    message(WARNING "LTO not supported: ${lto_msg}")
+  endif()
+endif()
+
 
 find_package(Eigen3 3.3 QUIET CONFIG)
 if (NOT Eigen3_FOUND)

@@ -5,11 +5,22 @@
 # - Per-run stdout/stderr -> run.log (with [CMD] header)
 # ============================================
 
+# ============================================
+# Chebyshev runs in parallel (WinPS 5.1 & PS7 OK)
+# - Static Morse once per gamma -> results/morse/g{gamma}/
+# - Cheb results -> results/cheb/g{gamma}/dt_{...}/tol_{...}/
+# - Per-run stdout/stderr -> run.log (with [CMD] header)
+# - ~100 log lines per run (auto log_every)
+# - tmax = 1
+# ============================================
+
 try {
   chcp 65001 | Out-Null
   [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
-  $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+  $OutputEncoding           = New-Object System.Text.UTF8Encoding($false)
 } catch {}
+
+$ErrorActionPreference = "Stop"
 
 # locate exe
 $root = Split-Path -Parent $PSScriptRoot
@@ -25,18 +36,12 @@ Write-Host "Using binary: $exe" -ForegroundColor Green
 
 # PARAMETERS
 $gammas = @(10, 20)
-$dts    = @('1e-4','1e-5','1e-6')
-$tols   = @('1e-11')
-$N      = 2001   # adjust if needed
-$xmax   = 30     # adjust if needed
-$tmax   = 10
-
-# log_every by dt
-$logMap = @{
-  '1e-4' = 10000
-  '1e-5' = 50000
-  '1e-6' = 100000
-}
+$dts    = @('1e-6','1e-5','1e-4','1e-3','1e-2','1e-1')  # как у RK4/Taylor
+$tols   = @('1e-11')                                     # можно списком: '1e-9','1e-11',...
+$N      = 2001
+$xmax   = 30
+$tmax   = 1
+$TARGET_LOG_LINES = 100
 
 # OUTPUT ROOTS
 $resultsRoot = Join-Path $root 'results'
@@ -71,17 +76,20 @@ foreach ($g in ($gammas | Select-Object -Unique)) {
   }
 }
 
-# 2) BUILD TASKS
+# 2) BUILD TASKS (auto log_every ≈ 100)
 $tasks = foreach ($g in $gammas) {
   foreach ($dt in $dts) {
     foreach ($tol in $tols) {
-      [pscustomobject]@{ gamma=$g; dt=$dt; tol=$tol; log=$logMap[$dt] }
+      $nsDbl  = [double]$tmax / [double]$dt
+      $nsteps = [long]([math]::Max(1, [math]::Round($nsDbl)))
+      $logEv  = [int]([math]::Max(1, [math]::Floor($nsteps / $TARGET_LOG_LINES)))
+      [pscustomobject]@{ gamma=$g; dt=$dt; tol=$tol; log=$logEv }
     }
   }
 }
 
 $active = @()
-$evolveSwitch = '--evolve_only'  # your binary prints "# --evolve_only: skipping ..."
+$evolveSwitch = '--evolve_only'  # как в других раннерах
 
 function Start-ChebTask {
   param($t, $exe, $baseCheb, $envMap, $N, $xmax, $tmax, $evolveSwitch)
@@ -91,10 +99,10 @@ function Start-ChebTask {
   $tolVal = [string]$t.tol
   $logEv  = [int]$t.log
 
-  $dtTok  = $dtVal.Replace('e-','e_').Replace('-','_')
-  $tolTok = $tolVal.Replace('e-','e_').Replace('-','_')  # e.g., 1e-11 -> 1e_11
+  $dtTok  = ($dtVal  -replace 'e-','e_') -replace '-','_'
+  $tolTok = ($tolVal -replace 'e-','e_') -replace '-','_'
 
-  $sub = Join-Path $baseCheb ("g{0}\dt_{1}\tol_{2}" -f $gVal, $dtTok, $tolTok)
+  $sub    = Join-Path $baseCheb ("g{0}\dt_{1}\tol_{2}" -f $gVal, $dtTok, $tolTok)
   New-Item -ItemType Directory -Force -Path $sub | Out-Null
 
   $stem    = ("cheb_g{0}_dt_{1}_tol_{2}" -f $gVal, $dtTok, $tolTok)
@@ -114,14 +122,19 @@ function Start-ChebTask {
       '--N',$N,'--xmax',$xmax,'--outdir',$sub,'--stem',$stem
     ) -join ' '
 
-    # write command header; then append process output
+    # header
     Set-Content -Encoding UTF8 -Path $logFile -Value "[CMD] $exe $cmd"
 
     $start = Get-Date
     & $exe @($evolveSwitch,'--evolve','cheb','--gamma',$gVal,'--dt',$dtVal,'--tmax',$tmax,
-             '--tol',$tolVal,'--K',0,'--log-every',$logEv,'--N',$N,'--xmax',$xmax,
-             '--outdir',$sub,'--stem',$stem) *>> $logFile
+             '--tol',$tolVal,'--K',0,'--log-every',$logEv,
+             '--N',$N,'--xmax',$xmax,'--outdir',$sub,'--stem',$stem) *>> $logFile
     $dur = (Get-Date) - $start
+
+    if ($LASTEXITCODE -ne 0) {
+      "EXIT CODE: $LASTEXITCODE" | Out-File -FilePath $logFile -Append -Encoding UTF8
+      throw "Run failed: g=$gVal dt=$dtVal tol=$tolVal (exit $LASTEXITCODE)"
+    }
 
     "DONE  [$stem] g=$gVal dt=$dtVal tol=$tolVal (elapsed {0})" -f ($dur.ToString("hh\:mm\:ss"))
   }

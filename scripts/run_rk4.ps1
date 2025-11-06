@@ -3,6 +3,7 @@
 # - Static Morse once per gamma -> results/morse/g{gamma}/
 # - RK4 results -> results/rk4/g{gamma}/dt_{...}/
 # - Per-run stdout/stderr -> run.log (with [CMD] header)
+# - ~100 log lines per run (auto log_every)
 # ============================================
 
 try {
@@ -10,6 +11,8 @@ try {
   [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
   $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 } catch {}
+
+$ErrorActionPreference = "Stop"
 
 # locate exe
 $root = Split-Path -Parent $PSScriptRoot
@@ -25,17 +28,12 @@ Write-Host "Using binary: $exe" -ForegroundColor Green
 
 # PARAMETERS
 $gammas = @(10, 20)
-$dts    = @('1e-4','1e-5','1e-6')
-$N      = 2001    # adjust if needed
-$xmax   = 30      # adjust if needed
-$tmax   = 10
+$dts    = @('1e-6','1e-5','1e-4','1e-3','1e-2','1e-1')  # как у Тейлора
+$N      = 2001
+$xmax   = 30
+$tmax   = 1                                         # оставляю как у тебя
 
-# log_every by dt
-$logMap = @{
-  '1e-4' = 10000
-  '1e-5' = 50000
-  '1e-6' = 100000
-}
+$TARGET_LOG_LINES = 100
 
 # OUTPUT ROOTS
 $resultsRoot = Join-Path $root 'results'
@@ -70,10 +68,13 @@ foreach ($g in ($gammas | Select-Object -Unique)) {
   }
 }
 
-# 2) BUILD TASKS
+# 2) BUILD TASKS with auto log_every ≈ 100 lines
 $tasks = foreach ($g in $gammas) {
   foreach ($dt in $dts) {
-    [pscustomobject]@{ gamma=$g; dt=$dt; log=$logMap[$dt] }
+    $nsDbl  = [double]$tmax / [double]$dt
+    $nsteps = [long]([math]::Max(1, [math]::Round($nsDbl)))
+    $logEv  = [int]([math]::Max(1, [math]::Floor($nsteps / $TARGET_LOG_LINES)))
+    [pscustomobject]@{ gamma=$g; dt=$dt; log=$logEv }
   }
 }
 
@@ -87,8 +88,7 @@ function Start-RK4Task {
   $dtVal = [string]$t.dt
   $logEv = [int]$t.log
 
-  $dtTok = $dtVal.Replace('e-','e_').Replace('-','_')
-
+  $dtTok = ($dtVal -replace 'e-','e_') -replace '-','_'
   $sub    = Join-Path $baseRK4 ("g{0}\dt_{1}" -f $gVal, $dtTok)
   New-Item -ItemType Directory -Force -Path $sub | Out-Null
 
@@ -117,6 +117,11 @@ function Start-RK4Task {
              '--tmax',$tmax,'--log-every',$logEv,'--N',$N,'--xmax',$xmax,
              '--outdir',$sub,'--stem',$stem) *>> $logFile
     $dur = (Get-Date) - $start
+
+    if ($LASTEXITCODE -ne 0) {
+      "EXIT CODE: $LASTEXITCODE" | Out-File -FilePath $logFile -Append -Encoding UTF8
+      throw "Run failed: g=$gVal dt=$dtVal (exit $LASTEXITCODE)"
+    }
 
     "DONE  [$stem] g=$gVal dt=$dtVal (elapsed {0})" -f ($dur.ToString("hh\:mm\:ss"))
   }
