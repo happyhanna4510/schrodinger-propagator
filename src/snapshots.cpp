@@ -16,12 +16,12 @@ void save_psi_csv(const std::filesystem::path& path,
     f << "t," << t << "\n";
     f << "x,RePsi,ImPsi,Abs2\n";
 
-    const int M = static_cast<int>(psi.size());
-    for (int i = 0; i < M; ++i) {
+    const Eigen::Index M = psi.size();
+    for (Eigen::Index i = 0; i < M; ++i) {
         const double re = psi[i].real();
         const double im = psi[i].imag();
         const double ab2 = re * re + im * im;
-        f << x_inner[i] << ',' << re << ',' << im << ',' << ab2 << "\n";
+        f << x_inner[static_cast<std::size_t>(i)] << ',' << re << ',' << im << ',' << ab2 << "\n";
     }
 }
 
@@ -43,7 +43,7 @@ void append_abs2_wide(const std::filesystem::path& path,
     }
 
     f << t;
-    for (int i = 0; i < psi.size(); ++i) {
+    for (Eigen::Index i = 0; i < psi.size(); ++i) {
         const double re = psi[i].real();
         const double im = psi[i].imag();
         f << ',' << (re * re + im * im);
@@ -69,7 +69,7 @@ void append_re_wide(const std::filesystem::path& path,
     }
 
     f << t;
-    for (int i = 0; i < psi.size(); ++i) {
+    for (Eigen::Index i = 0; i < psi.size(); ++i) {
         f << ',' << psi[i].real();
     }
     f << "\n";
@@ -93,7 +93,7 @@ void append_im_wide(const std::filesystem::path& path,
     }
 
     f << t;
-    for (int i = 0; i < psi.size(); ++i) {
+    for (Eigen::Index i = 0; i < psi.size(); ++i) {
         f << ',' << psi[i].imag();
     }
     f << "\n";

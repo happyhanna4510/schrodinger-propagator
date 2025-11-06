@@ -1,5 +1,7 @@
 #include "cli.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -11,10 +13,56 @@ void warn_missing(const char* flag) {
     std::cerr << "warning: missing value after " << flag << "\n";
 }
 
+void print_help(const char* prog) {
+    std::cout << "Usage: " << prog << " [options]\n\n"
+              << "Initial state options:\n"
+              << "  --init <complex-gauss|real-gauss>  Select Gaussian type (default complex-gauss).\n"
+              << "  --x0 <value>                        Gaussian center (default 0).\n"
+              << "  --sigma <value>                     Gaussian width (default 1). Must be > 0.\n"
+              << "  --k0 <value>                        Plane-wave wavenumber for complex-gauss (default 10).\n"
+              << "  --U0 <value>                        Uniform field amplitude in H = H0 + (U0/xmax) * X (default 0).\n\n"
+              << "Evolution options:\n"
+              << "  --evolve <method>                   Enable time evolution using taylor|rk4|cheb.\n"
+              << "  --dt <value>                        Time step size.\n"
+              << "  --tmax <value>                      Total simulated time.\n"
+              << "  --K <value>                         Taylor/Chebyshev order limit.\n"
+              << "  --tol <value>                       Chebyshev tolerance.\n\n"
+              << "Grid & potential:\n"
+              << "  --N <value>                         Number of grid points.\n"
+              << "  --xmax <value>                      Half-width of domain [-xmax, xmax].\n"
+              << "  --gamma <value>                     Morse potential parameter.\n"
+              << "  --Umax <value>                      Target max potential amplitude for scaling.\n\n"
+              << "Output control:\n"
+              << "  --outdir <dir>                      Output directory (default results).\n"
+              << "  --csv <name>                        Custom CSV filename.\n"
+              << "  --log-every <steps>                 Console log cadence.\n"
+              << "  --csv-every <steps>                 CSV log cadence.\n"
+              << "  --flush-every <rows>                CSV flush cadence.\n"
+              << "  --aggregate                         Aggregate log timing stats.\n"
+              << "  --no-theta                          Skip theta metrics.\n"
+              << "  --wide[,-re,-im]                    Emit wide output dumps.\n"
+              << "  --quiet                             Suppress console logs.\n"
+              << "  --evolve_only                       Skip regenerating static Morse outputs.\n"
+              << "  --profile                           Print integrator profiling data.\n"
+              << "  --help                              Show this message and exit.\n\n"
+              << "Examples:\n"
+              << "  " << prog << " --evolve taylor --init complex-gauss --x0 -10 --sigma 1.5 --k0 12\n"
+              << "  " << prog << " --evolve taylor --init complex-gauss --x0 -10 --sigma 1.2 --k0 15 --U0 2.0\n"
+              << "  " << prog << " --evolve rk4 --init real-gauss --x0 0 --sigma 2.0\n";
+}
+
+std::string canonicalize_init(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::replace(value.begin(), value.end(), '_', '-');
+    return value;
+}
+
 }
 
 Params parse_args(int argc, char** argv) {
     Params p;
+    bool k0_specified = false;
 
     auto getd = [&](int& i, double& dst) {
         if (i + 1 < argc) dst = std::atof(argv[++i]);
@@ -32,12 +80,23 @@ Params parse_args(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         std::string s = argv[i];
 
+        if (s == "--help" || s == "-h") {
+            print_help(argv[0]);
+            std::exit(0);
+        }
+
         if      (s == "--N")        geti(i, p.N);
         else if (s == "--xmax")     getd(i, p.xmax);
         else if (s == "--gamma")    getd(i, p.gamma);
 
         else if (s == "--Umax")     getd(i, p.Umax);
         else if (s == "--Vcap")     getd(i, p.Umax); // alias
+
+        else if (s == "--init") { gets(i, p.init); }
+        else if (s == "--x0")       getd(i, p.x0);
+        else if (s == "--sigma")    getd(i, p.sigma);
+        else if (s == "--k0")      { getd(i, p.k0); k0_specified = true; }
+        else if (s == "--U0")       getd(i, p.U0);
 
         else if (s == "--first")    geti(i, p.first);
 
@@ -70,6 +129,19 @@ Params parse_args(int argc, char** argv) {
             std::cerr << "warning: unknown option: " << s << "\n";
         }
     }
+
+    p.init = canonicalize_init(p.init);
+    if (p.init != "complex-gauss" && p.init != "real-gauss") {
+        std::cerr << "error: --init must be 'complex-gauss' or 'real-gauss' (got '" << p.init << "')\n";
+        std::exit(1);
+    }
+
+    if (p.sigma <= 0.0) {
+        std::cerr << "error: sigma must be > 0 (got " << p.sigma << ")\n";
+        std::exit(1);
+    }
+
+    p.k0_specified = k0_specified;
 
     return p;
 }

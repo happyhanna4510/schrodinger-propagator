@@ -7,10 +7,10 @@
 
 // tworzy strukturę trójdiagonalną (wektory a,b,c) z gęstej macierzy H
 // kopiując diagonalę oraz pod/naddiagonalę
-Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H) 
+Tridiag make_tridiag_from_dense(const Eigen::Ref<const Eigen::MatrixXd>& H)
 {
-    const int M = static_cast<int>(H.rows());
-    const int off_size = std::max(0, M - 1);
+    const Eigen::Index M = H.rows();
+    const Eigen::Index off_size = std::max<Eigen::Index>(static_cast<Eigen::Index>(0), M - 1);
     Tridiag T{Eigen::VectorXd(M), Eigen::VectorXd(off_size), Eigen::VectorXd(off_size)};
     T.a = H.diagonal();
     if (off_size > 0) {
@@ -59,7 +59,7 @@ void tridiag_mul(const Tridiag& T,
                  Eigen::VectorXcd& y,
                  int* reallocations)
 {
-    const int M = static_cast<int>(T.a.size());
+    const Eigen::Index M = T.a.size();
     if (y.size() != M) {
         if (reallocations) {
             *reallocations += 1;
@@ -77,7 +77,7 @@ void tridiag_mul(const Tridiag& T,
     }
 
     y[0] = T.a[0] * x[0] + T.b[0] * x[1];
-    for (int i = 1; i < M - 1; ++i) {
+    for (Eigen::Index i = 1; i < M - 1; ++i) {
         y[i] = T.c[i - 1] * x[i - 1] + T.a[i] * x[i] + T.b[i] * x[i + 1];
     }
     y[M - 1] = T.c[M - 2] * x[M - 2] + T.a[M - 1] * x[M - 1];

@@ -30,12 +30,15 @@ void write_morse_outputs(const Grid& g,
         std::cout << "# Morse gamma="<<gamma<<"  (n_max="<<morse_nmax(gamma)<<")\n\n";
     }
 
-    int show = std::min(first, (int)Evals_true.size());
-    auto Eanal = morse_energies(gamma, show);
-    std::vector<double> Eval_num(show);
-    for (int i=0;i<show;i++) Eval_num[i] = Evals_true(i);
+    const Eigen::Index available = Evals_true.size();
+    const Eigen::Index show = std::min<Eigen::Index>(static_cast<Eigen::Index>(first), available);
+    auto Eanal = morse_energies(gamma, static_cast<int>(show));
+    std::vector<double> Eval_num(static_cast<std::size_t>(show));
+    for (Eigen::Index i = 0; i < show; ++i) {
+        Eval_num[static_cast<std::size_t>(i)] = Evals_true(i);
+    }
     if (!quiet) {
-        print_energy_table(Eval_num, Eanal, show);
+        print_energy_table(Eval_num, Eanal, static_cast<int>(show));
     }
 
     Eigen::MatrixXd G = (EV_true.transpose() * (g.dx * EV_true));
@@ -53,8 +56,10 @@ void write_morse_outputs(const Grid& g,
     for (int i=0;i<g.N-2;i++) xin[i]=g.x[i+1];
     save_matrix_csv(out / "morse_eigenstates.csv", xin, EV_true, Ksave, "x", "psi_n");
 
-    std::vector<double> Eall(Evals_true.size());
-    for (int i=0;i<(int)Evals_true.size(); ++i) Eall[i] = Evals_true(i);
+    std::vector<double> Eall(static_cast<std::size_t>(Evals_true.size()));
+    for (Eigen::Index i = 0; i < Evals_true.size(); ++i) {
+        Eall[static_cast<std::size_t>(i)] = Evals_true(i);
+    }
     save_vector_csv(out / "morse_energies_num.csv",  Eall, "E_num");
 
     auto Eanal_all = morse_energies(gamma, morse_nmax(gamma)+1);

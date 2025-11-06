@@ -39,12 +39,15 @@ fs::path run_time_evolution(const Grid& g,
                   << ", scale=" << scale << "\n";
     }
 
-    Eigen::MatrixXd H_evol = build_hamiltonian(g, U_evol);
+    Eigen::MatrixXd H_evol = build_hamiltonian(g, U_evol, P.U0);
     Tridiag T = make_tridiag_from_dense(H_evol);
 
-
-    Eigen::VectorXcd psi_init = gaussian_on_inner(g, 1.0, 0.35).cast<std::complex<double>>();
-
+    Eigen::VectorXcd psi_init;
+    if (P.init == "real-gauss") {
+        psi_init = gaussian_on_inner(g, P.x0, P.sigma).cast<std::complex<double>>();
+    } else {
+        psi_init = gaussian_complex_on_inner(g, P.x0, P.sigma, P.k0);
+    }
 
     
     int    K      = (P.K > 0 ? P.K : 4);

@@ -1,8 +1,9 @@
 #include "io.hpp"
 #include <iostream>
 #include <iomanip>
-#include <fstream>
+#include <algorithm>
 #include <cmath>
+#include <fstream>
 
 #include <sstream>
 
@@ -24,11 +25,12 @@ void print_energy_table(const std::vector<double>& Eval,
 }
 
 std::vector<double> populations(const Eigen::MatrixXd& EV,
-                                const Eigen::VectorXd& psi, int k, double dx) 
+                                const Eigen::VectorXd& psi, int k, double dx)
 {
-    int K = std::min(k, (int)EV.cols());
-    std::vector<double> pop(K,0.0);
-    for (int j=0;j<K;j++){
+    const Eigen::Index max_cols = EV.cols();
+    const Eigen::Index K = std::min<Eigen::Index>(static_cast<Eigen::Index>(k), max_cols);
+    std::vector<double> pop(static_cast<std::size_t>(K), 0.0);
+    for (Eigen::Index j = 0; j < K; ++j) {
         double cj = (EV.col(j).array() * psi.array()).sum() * dx;
         pop[j] = cj*cj; // все реально => |c|^2 = c^2
     }
@@ -65,16 +67,17 @@ void save_matrix_csv(const fs::path& path,
                      const std::string& colx,
                      const std::string& base) 
 {
-    int M = (int)x.size();
-    int K = std::min(first_cols, (int)cols.cols());
+    const std::size_t M = x.size();
+    const Eigen::Index max_cols = cols.cols();
+    const Eigen::Index K = std::min<Eigen::Index>(static_cast<Eigen::Index>(first_cols), max_cols);
     std::ofstream f = open_ofs(path);
     if (!f) return;
     f << colx;
-    for (int j=0;j<K;j++) f << "," << base << j;
+    for (Eigen::Index j = 0; j < K; ++j) f << "," << base << j;
     f << "\n";
-    for (int i=0;i<M;i++){
+    for (std::size_t i = 0; i < M; ++i) {
         f << std::setprecision(12) << x[i];
-        for (int j=0;j<K;j++) f << "," << std::setprecision(12) << cols(i,j);
+        for (Eigen::Index j = 0; j < K; ++j) f << "," << std::setprecision(12) << cols(static_cast<Eigen::Index>(i), j);
         f << "\n";
     }
 }
@@ -127,7 +130,7 @@ void write_wide_header(std::ofstream& f, const std::vector<double>& x) {
 
 void write_abs2_row(std::ofstream& f, const Eigen::VectorXcd& psi, double t) {
     f << t;
-    for (int i = 0; i < psi.size(); ++i) {
+    for (Eigen::Index i = 0; i < psi.size(); ++i) {
         const double re = psi[i].real();
         const double im = psi[i].imag();
         f << ',' << (re * re + im * im);
@@ -137,7 +140,7 @@ void write_abs2_row(std::ofstream& f, const Eigen::VectorXcd& psi, double t) {
 
 void write_component_row(std::ofstream& f, const Eigen::VectorXcd& psi, double t, bool real_part) {
     f << t;
-    for (int i = 0; i < psi.size(); ++i) {
+    for (Eigen::Index i = 0; i < psi.size(); ++i) {
         f << ',' << (real_part ? psi[i].real() : psi[i].imag());
     }
     f << '\n';
