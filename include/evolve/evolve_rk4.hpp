@@ -16,5 +16,6 @@ private:
     Eigen::VectorXcd k3_;
     Eigen::VectorXcd k4_;
     Eigen::VectorXcd tmp_;
+    Eigen::VectorXcd sum_;
 };
 

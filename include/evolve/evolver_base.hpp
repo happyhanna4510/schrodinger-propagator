@@ -17,12 +17,21 @@ struct EvolverConfig {
     bool   aggregate   = true;
     int    flush_every = 1000;
     bool   no_theta    = false;
+    bool   profile     = false;
+};
+
+struct StepProfile {
+    double step_us = 0.0;
+    double work_us = 0.0;
+    double rhs_us  = 0.0;
+    int    reallocations = 0;
 };
 
 struct StepResult {
     int matvecs = 0;
     std::optional<int>    K_used;
     std::optional<double> bn_ratio;
+    std::optional<StepProfile> profile;
 };
 
 class EvolverBase {

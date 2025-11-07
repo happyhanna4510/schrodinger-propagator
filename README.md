@@ -80,8 +80,8 @@ Plik wykonywalny znajdziesz w `build/morse`. Opcjonalnie uruchom test kontrolny:
 Skorzystaj z CMake wraz z MSVC lub MinGW (przykład w PowerShell):
 
 ```powershell
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_FLAGS_RELEASE="/O2 /arch:AVX2 /DNDEBUG /D EIGEN_NO_DEBUG"
-cmake --build . --config Release -j8
+cmake -S . -B build -G "Visual Studio 17 2022" -DENABLE_NATIVE=ON -DENABLE_LTO=ON
+cmake --build build --config Release -j8
 ```
 
 Wynikowy program to `build\Release\morse.exe` (lub `build\morse.exe` dla generatorów jednokonfiguracyjnych). Projekt ustawia `/W4 /O2` dla MSVC i korzysta wyłącznie z nagłówków Eigen, więc nie potrzeba dodatkowych bibliotek.
@@ -209,10 +209,10 @@ Obsługuje **autodetekcję** `morse_potential.csv` w układzie `results/morse/g<
 
 ```bash
 # Linux / macOS — γ = 10 (studnia + poziomy + asymptota)
-python scripts/plot_morse.py --gamma 10 --root results/morse   --xleft 0 --xright 30 --grid --asymptote   --title "Potencjał Morse’a (γ=10)" --save plots_out/morse_g10.png
+python scripts/plot_morse.py --gamma 10 --root results/morse   --xleft -30 --xright 30 --ymax 2.2 --ymin -0.2 --grid --asymptote   --title "Potencjał Morsea (γ=10)" --save plots_out/morse_g10.png
 
-# γ = 20 (dużo poziomów → ogranicz do 12)
-python scripts/plot_morse.py --gamma 20 --levels 12 --root results/morse   --xleft 0 --xright 30 --grid --asymptote   --title "Potencjał Morse’a (γ=20, 12 poziomów)" --save plots_out/morse_g20.png
+# γ = 20 
+python scripts/plot_morse.py --gamma 20 --root results/morse   --xleft -30 --xright 30 --ymax 2.2 --ymin -0.2 --grid --asymptote --title "Potencjał Morsea (γ=20)" --save plots_out/morse_g20.png 
 ```
 
 
@@ -224,6 +224,11 @@ python scripts/plot_morse.py --gamma 20 --levels 12 --root results/morse   --xle
 | `--xmax` | `30.0` | Półszerokość obszaru `[-xmax, xmax]`.【|
 | `--gamma` | `10.0` | Parametr potencjału Morse’a kontrolujący głębokość studni. |
 | `--Umax` / `--Vcap` | `0.1` | Skalowanie potencjału używanego w ewolucji tak, aby `max(U)` nie przekraczało limitu; analiza widmowa pozostaje bez zmian.|
+| `--init` | `complex-gauss` | Wybór stanu początkowego: ruchoma fala (`complex-gauss`) lub dawna rzeczywista paczka (`real-gauss`). |
+| `--x0` | `0.0` | Położenie środka paczki Gaussa na siatce wewnętrznej. |
+| `--sigma` | `1.0` | Szerokość Gaussa (musi być dodatnia); używana zarówno dla stanu rzeczywistego, jak i zespolonego. |
+| `--k0` | `10.0` | Liczba falowa fali płaskiej mnożonej przez obwiednię Gaussa; ignorowana dla `real-gauss`. |
+| `--U0` | `0.0` | Amplituda jednorodnego pola elektrycznego w Hamiltonianie `H = H0 + (U0/xmax)·X`. |
 | `--first` | `10` | Liczba stanów własnych i energii zapisywanych do CSV oraz wypisywanych na stdout. |
 | `--evolve <method>` | `taylor` | Aktywuje propagację w czasie i wybiera ewolver `taylor`, `rk4` lub `cheb` (niewrażliwe na wielkość liter). |
 | `--dt` | `1e-5` | Stały krok czasowy dla wszystkich ewolverów. |
@@ -231,7 +236,7 @@ python scripts/plot_morse.py --gamma 20 --levels 12 --root results/morse   --xle
 | `--K` | `4` | Rząd obcięcia Taylora; przekazywany także do RK4 (ignorowany) oraz Czebyszewa (opcjonalny limit). |
 | `--tol` | `1e-12` | Tolerancja metody Czebyszewa kontrolująca adaptacyjny stopień wielomianu. |
 | `--log` / `--log-every` | `10000` | Zapis diagnostyki do konsoli i CSV co `log_every` kroków (zawsze pierwszy i ostatni). |
-| `--csv-every` | `1` | Pomijanie wierszy CSV między logami – zapis co `csv_every` kroków.【F:include/cli.hpp†L17-L19】 |
+| `--csv-every` | `1` | Pomijanie wierszy CSV między logami – zapis co `csv_every` kroków.【F:include/cli.hpp†L23-L32】 |
 | `--aggregate` | `false` | Agregacja czasu ściennego i liczby mnożeń w oknie logowania; w przeciwnym razie raportowany jest ostatni krok.|
 | `--flush-every` | `1000` | Wymuszanie opróżnienia bufora CSV co podaną liczbę wierszy (0 wyłącza). |
 | `--no-theta` | `false` | Pominięcie obliczeń metryk θ (tańsze, gdy diagnostyka spektralna nie jest potrzebna). |
@@ -242,6 +247,12 @@ python scripts/plot_morse.py --gamma 20 --levels 12 --root results/morse   --xle
 | `--wide` | `false` | Aktywuje szerokie zrzuty `|ψ|²` na wewnętrznej siatce (`*_abs2_wide.csv`). |
 | `--wide-re` | `false` | Zapisuje dodatkowo część rzeczywistą (`*_re_wide.csv`). |
 | `--wide-im` | `false` | Zapisuje dodatkowo część urojoną (`*_im_wide.csv`). |
+
+### Przykładowe konfiguracje paczki początkowej
+
+- Ruchoma paczka bez pola: `--init complex-gauss --x0 -10 --sigma 1.5 --k0 12`
+- Paczka w jednorodnym polu: `--init complex-gauss --x0 -10 --sigma 1.2 --k0 15 --U0 2.0`
+- Zachowanie zgodne z wcześniejszymi wersjami: `--init real-gauss --x0 0 --sigma 2.0`
 
 ## Wyjścia i logowanie
 

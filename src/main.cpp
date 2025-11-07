@@ -30,6 +30,22 @@ int main(int argc, char** argv)
 
     Params P = parse_args(argc, argv);
 
+    if (!P.quiet) {
+        std::cout << "# Initial packet: init=" << P.init
+                  << ", x0=" << P.x0
+                  << ", sigma=" << P.sigma
+                  << ", k0=" << P.k0;
+        if (P.init == "real-gauss") {
+            std::cout << " (not used for real-gauss)";
+        }
+        std::cout << "\n";
+        if (P.init == "real-gauss" && P.k0_specified) {
+            std::cout << "# note: k0 was specified but is ignored for real-gauss initial states.\n";
+        }
+        std::cout << "# Uniform field amplitude U0=" << P.U0
+                  << " (H = H0 + (U0/xmax)*X)\n";
+    }
+
     Grid g(P.N, P.xmax);
     auto U_true = morse_potential(g, P.gamma);
 
