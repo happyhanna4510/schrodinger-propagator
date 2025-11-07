@@ -209,10 +209,10 @@ Obsługuje **autodetekcję** `morse_potential.csv` w układzie `results/morse/g<
 
 ```bash
 # Linux / macOS — γ = 10 (studnia + poziomy + asymptota)
-python scripts/plot_morse.py --gamma 10 --root results/morse   --xleft 0 --xright 30 --grid --asymptote   --title "Potencjał Morse’a (γ=10)" --save plots_out/morse_g10.png
+python scripts/plot_morse.py --gamma 10 --root results/morse   --xleft -30 --xright 30 --ymax 2.2 --ymin -0.2 --grid --asymptote   --title "Potencjał Morsea (γ=10)" --save plots_out/morse_g10.png
 
-# γ = 20 (dużo poziomów → ogranicz do 12)
-python scripts/plot_morse.py --gamma 20 --levels 12 --root results/morse   --xleft 0 --xright 30 --grid --asymptote   --title "Potencjał Morse’a (γ=20, 12 poziomów)" --save plots_out/morse_g20.png
+# γ = 20 
+python scripts/plot_morse.py --gamma 20 --root results/morse   --xleft -30 --xright 30 --ymax 2.2 --ymin -0.2 --grid --asymptote --title "Potencjał Morsea (γ=20)" --save plots_out/morse_g20.png 
 ```
 
 
