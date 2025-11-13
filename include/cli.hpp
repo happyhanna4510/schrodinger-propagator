@@ -3,7 +3,7 @@
 
 struct Params {
     int    N        = 2001;
-    double xmax     = 30.0;
+    double xmax     = 20.0;
     double gamma    = 10.0;
     double Umax     = 0.1;
     std::string init      = "complex-gauss";
@@ -18,7 +18,7 @@ struct Params {
     std::string evolve_method = "taylor";
     int    K         = 4;
     double dt        = 1e-5;
-    double tmax      = 1.0;
+    double tmax      = 15.0;
     double tol       = 1e-12;
     int    log_every  = 1000;
     int    csv_every  = 1;

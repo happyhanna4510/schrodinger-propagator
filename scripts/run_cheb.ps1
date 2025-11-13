@@ -4,8 +4,9 @@
 # - Cheb -> results/cheb/g{gamma}/dt_{...}/tol_{...}/
 # - Per-run stdout/stderr -> run.log (with [CMD] header)
 # - CSV -> unique long filename per (g, dt, tol)
-# - ~100 log lines per run (auto --log-every), tmax = 1
+# - ~100 log lines per run (auto --log-every), tmax = 15
 # - Parallel status banners + per-job elapsed time
+# - Output collation mirrors Taylor: __abs2_wide.csv, __abs2.csv, __metrics.csv (conditionally)
 # ============================================
 
 try {
@@ -34,13 +35,14 @@ Write-Host "Using binary: $exe" -ForegroundColor Green
 # --- PARAMETERS ---
 $gammas = @(10, 20)
 $dts    = @('1e-6','1e-5','1e-4','1e-3','1e-2','1e-1')
-$tols   = @('1e-11')      # можно: '1e-9','1e-10','1e-11', ...
+$tols   = @('1e-11')         # можно: '1e-9','1e-10','1e-11',...
 $N      = 2001
-$xmax   = 30
-$tmax   = 1
+$xmax   = 20
+$tmax   = 15
 $TARGET_LOG_LINES = 100
+$evolveSwitch = '--evolve_only'
 
-# для согласованных “длинных” имён CSV (инициализация волнового пакета)
+# Init (tagging like Taylor)
 $Init  = 'complex-gauss'
 $X0    = 0
 $Sigma = 1
@@ -67,7 +69,10 @@ $commonEnv = @{
   OPENBLAS_NUM_THREADS = "1"
 }
 
-# --- 1) PRECOMPUTE MORSE STATIC ONCE PER GAMMA (NO --stem) ---
+# --- helpers ---
+function Tokenize([string]$s) { return ($s -replace 'e-','e_') -replace '-','_' }
+
+# --- 1) PRECOMPUTE MORSE STATIC ONCE PER GAMMA ---
 foreach ($g in ($gammas | Select-Object -Unique)) {
   $gdir   = Join-Path $baseMorse ("g{0}" -f $g)
   $potCsv = Join-Path $gdir 'morse_potential.csv'
@@ -97,62 +102,52 @@ $tasks = foreach ($g in $gammas) {
 $total = $tasks.Count
 Write-Host ("[cheb] launching {0} tasks with up to {1} parallel jobs..." -f $total, $maxJobs) -ForegroundColor Yellow
 
-$evolveSwitch = '--evolve_only'
-
-# --- Start-ChebTask returns a Job context ---
+# --- Start one CHEB job ---
 function Start-ChebTask {
-  param($t, $exe, $baseCheb, $envMap, $N, $xmax, $tmax, $evolveSwitch, $Init,$X0,$Sigma,$K0,$U0,$PktTag)
+  param($t, $exe, $baseCheb, $envMap, $N, $xmax, $tmax, $evolveSwitch,
+        $Init,$X0,$Sigma,$K0,$U0,$PktTag)
 
   $gVal   = [int]$t.gamma
   $dtVal  = [string]$t.dt
   $tolVal = [string]$t.tol
   $logEv  = [int]$t.log
 
-  $dtTok  = ($dtVal  -replace 'e-','e_') -replace '-','_'
-  $tolTok = ($tolVal -replace 'e-','e_') -replace '-','_'
+  $dtTok  = Tokenize $dtVal
+  $tolTok = Tokenize $tolVal
 
   # results/cheb/g{g}/dt_{dt}/tol_{tol}/
   $sub = Join-Path $baseCheb ("g{0}\dt_{1}\tol_{2}" -f $gVal, $dtTok, $tolTok)
   New-Item -ItemType Directory -Force -Path $sub | Out-Null
 
-  # уникальное длинное имя CSV
+  # base name
   $csvBase = ("cheb_g{0}_dt_{1}_tol_{2}_N{3}_xmax{4}_tmax{5}_{6}" -f `
               $gVal,$dtTok,$tolTok,$N,($xmax.ToString().Replace('.','p')),$tmax,$PktTag)
 
-  # temp outdir внутри папки tol_
+  # tmp outdir
   $tmpOut = Join-Path $sub ("__tmp_" + [guid]::NewGuid().ToString("N"))
   New-Item -ItemType Directory -Force -Path $tmpOut | Out-Null
 
-  # лог всегда run.log
   $logFile = Join-Path $sub "run.log"
-
-  Write-Host ("START [cheb] g={0}  dt={1}  tol={2}  -> {3}.csv" -f $gVal,$dtVal,$tolVal,$csvBase) -ForegroundColor Cyan
+  Write-Host ("START [cheb] g={0}  dt={1}  tol={2}  -> {3}" -f $gVal,$dtVal,$tolVal,$csvBase) -ForegroundColor Cyan
 
   $sb = {
     param($exe,$gVal,$dtVal,$tolVal,$logEv,$tmpOut,$logFile,$envMap,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0)
 
     foreach ($k in $envMap.Keys) { [Environment]::SetEnvironmentVariable($k, $envMap[$k], "Process") }
 
-    $cmd = @(
-      $evolveSwitch,'--evolve','cheb',
-      '--gamma',$gVal,'--dt',$dtVal,'--tmax',$tmax,
-      '--tol',$tolVal,'--log-every',$logEv,      # K для cheb не обязателен; если нужен, добавь
-      '--N',$N,'--xmax',$xmax,
-      '--outdir',$tmpOut,
-      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0
-    ) -join ' '
-
-    Set-Content -Encoding UTF8 -Path $logFile -Value ("[CMD] {0} {1}" -f $exe, $cmd)
-
-    $start = Get-Date
-    & $exe @(
+    $cmdArgs = @(
       $evolveSwitch,'--evolve','cheb',
       '--gamma',$gVal,'--dt',$dtVal,'--tmax',$tmax,
       '--tol',$tolVal,'--log-every',$logEv,
       '--N',$N,'--xmax',$xmax,
       '--outdir',$tmpOut,
-      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0
-    ) *>> $logFile
+      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0,
+      '--wide'             # ⬅️ генерим wide-выгрузку, как в Taylor
+    )
+
+    Set-Content -Encoding UTF8 -Path $logFile -Value ("[CMD] {0} {1}" -f $exe, ($cmdArgs -join ' '))
+    $start = Get-Date
+    & $exe $cmdArgs *>> $logFile
     $dur = (Get-Date) - $start
 
     if ($LASTEXITCODE -ne 0) {
@@ -164,7 +159,7 @@ function Start-ChebTask {
   }
 
   $job = Start-Job -ScriptBlock $sb -ArgumentList `
-    $exe,$gVal,$dtVal,$tolVal,$logEv,$tmpOut,$logFile,$commonEnv,$N,$xmax,$tmax,'--evolve_only',$Init,$X0,$Sigma,$K0,$U0
+    $exe,$gVal,$dtVal,$tolVal,$logEv,$tmpOut,$logFile,$commonEnv,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0
 
   return [pscustomobject]@{
     Job     = $job
@@ -177,40 +172,43 @@ function Start-ChebTask {
   }
 }
 
+# --- Move outputs like Taylor: abs2_wide / abs2 / metrics (conditionally) ---
 function Finalize-Job {
   param($ctx, $took)
 
-  # выбрать самый большой CSV как основной
-  $primary = Get-ChildItem -Path $ctx.TmpOut -Filter "*.csv" -ErrorAction SilentlyContinue |
-             Sort-Object Length -Descending | Select-Object -First 1
-  if ($primary) {
-    $targetCsv = Join-Path $ctx.SubDir ("{0}.csv" -f $ctx.CsvBase)
-    Move-Item -Force $primary.FullName $targetCsv
+  $allCsv = Get-ChildItem -Path $ctx.TmpOut -Filter '*.csv' -File -ErrorAction SilentlyContinue
+
+  foreach ($f in $allCsv) {
+    if ($f.Name -like '*abs2_wide*') {
+      $tgt = Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)
+    }
+    elseif ($f.Name -like '*abs2*') {
+      $tgt = Join-Path $ctx.SubDir ("{0}__abs2.csv" -f $ctx.CsvBase)
+    }
+    else {
+      # всё, что не abs2/abs2_wide — отправляем как метрики/срезы
+      $tgt = Join-Path $ctx.SubDir ("{0}__metrics.csv" -f $ctx.CsvBase)
+    }
+    Move-Item -Force $f.FullName $tgt
   }
-  # (опционально) перенести прочие CSV:
-  # Get-ChildItem -Path $ctx.TmpOut -Filter "*.csv" |
-  #   Where-Object { $_.FullName -ne $primary.FullName } |
-  #   ForEach-Object {
-  #     $tgt = Join-Path $ctx.SubDir ("{0}__{1}" -f $ctx.CsvBase, $_.Name)
-  #     Move-Item -Force $_.FullName $tgt
-  #   }
+
+  if (-not (Test-Path (Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)))) {
+    Write-Warning "Wide CSV not produced for g=$($ctx.G) dt=$($ctx.DT) tol=$($ctx.TOL). Check flags."
+  }
 
   Remove-Item -Recurse -Force $ctx.TmpOut
   if (-not $took) { $took = "unknown" }
-  Write-Host ("DONE  [cheb] g={0}  dt={1}  tol={2}  -> {3}.csv  (elapsed {4})" -f `
-              $ctx.G,$ctx.DT,$ctx.TOL,$ctx.CsvBase,$took) -ForegroundColor Green
+  Write-Host ("DONE  [cheb] g={0}  dt={1}  tol={2}  -> {3} (elapsed {4})" -f `
+              $ctx.G,$ctx.DT,$ctx.TOL,$ctx.SubDir,$took) -ForegroundColor Green
 }
 
 # --- 3) SCHEDULER with throttling (parallel) ---
 $active   = @()
 $started  = 0
 $finished = 0
-
-function Show-ParallelStatus {
-  param($started,$finished,$total,$running)
+function Show-ParallelStatus { param($started,$finished,$total,$running)
   Write-Host ("[parallel] started={0}/{1}; finished={2}/{1}; running={3}" -f `
-              $started,$total,$finished,$running) -ForegroundColor DarkCyan
-}
+              $started,$total,$finished,$running) -ForegroundColor DarkCyan }
 
 foreach ($t in $tasks) {
   while (($active | Where-Object { $_.Job.State -eq 'Running' }).Count -ge $maxJobs) {
@@ -229,7 +227,7 @@ foreach ($t in $tasks) {
 
   $ctx = Start-ChebTask -t $t `
     -exe $exe -baseCheb $baseCheb -envMap $commonEnv `
-    -N $N -xmax $xmax -tmax $tmax -evolveSwitch '--evolve_only' `
+    -N $N -xmax $xmax -tmax $tmax -evolveSwitch $evolveSwitch `
     -Init $Init -X0 $X0 -Sigma $Sigma -K0 $K0 -U0 $U0 -PktTag $PktTag
 
   $active += $ctx
@@ -250,3 +248,5 @@ foreach ($ctx in @($active)) {
 }
 
 Write-Host ("All Chebyshev tasks finished. Total: {0}. Max parallel: {1}. Output: {2}" -f $total, $maxJobs, $resultsRoot) -ForegroundColor Green
+
+
