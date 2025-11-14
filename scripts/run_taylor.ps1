@@ -45,6 +45,8 @@ $tmax   = 15
 $TARGET_LOG_LINES = 100
 $evolveSwitch = '--evolve_only'
 
+$ENABLE_WIDE_GLOBAL = $false   # [ADDED] глобальный выключатель wide (true => включить --wide для ВСЕХ задач)
+
 # Initial state (tagging)
 $Init  = 'complex-gauss'
 $X0    = 0
@@ -106,8 +108,11 @@ Write-Host ("[taylor] launching {0} tasks with up to {1} parallel jobs..." -f $t
 
 # --- Start one TAYLOR job ---
 function Start-TaylorTask {
-  param($t, $exe, $baseTaylor, $envMap, $N, $xmax, $tmax, $evolveSwitch,
-        $Init,$X0,$Sigma,$K0,$U0,$PktTag)
+  param(
+    $t, $exe, $baseTaylor, $envMap, $N, $xmax, $tmax, $evolveSwitch,
+    $Init,$X0,$Sigma,$K0,$U0,$PktTag,
+    $EnableWideGlobal            # [ADDED] пробрасываем глобальный флаг внутрь задачи
+  )
 
   $gVal  = [int]$t.gamma
   $kVal  = [int]$t.K
@@ -115,6 +120,12 @@ function Start-TaylorTask {
   $logEv = [int]$t.log
 
   $dtTok = Tokenize $dtVal
+
+  # [ADDED] по умолчанию wide берём из глобального флага;
+  # здесь можно сделать более хитрую логику (например wide только для части dt):
+  $useWide = $EnableWideGlobal
+  # пример кастомизации:
+  # if ($dtVal -eq '1e-3') { $useWide = $true }
 
   # results/taylor/g{g}/K{k}/dt_{dtTok}/
   $sub = Join-Path $baseTaylor ("g{0}\K{1}\dt_{2}" -f $gVal, $kVal, $dtTok)
@@ -132,7 +143,11 @@ function Start-TaylorTask {
   Write-Host ("START [taylor] g={0}  K={1}  dt={2}  -> {3}" -f $gVal,$kVal,$dtVal,$csvBase) -ForegroundColor Cyan
 
   $sb = {
-    param($exe,$gVal,$kVal,$dtVal,$logEv,$tmpOut,$logFile,$envMap,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0)
+    param(
+      $exe,$gVal,$kVal,$dtVal,$logEv,$tmpOut,$logFile,$envMap,
+      $N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0,
+      $useWide                    # [ADDED] берём флаг wide внутрь job'а
+    )
 
     foreach ($k in $envMap.Keys) { [Environment]::SetEnvironmentVariable($k, $envMap[$k], "Process") }
 
@@ -142,9 +157,12 @@ function Start-TaylorTask {
       '--tmax',$tmax,'--log-every',$logEv,
       '--N',$N,'--xmax',$xmax,
       '--outdir',$tmpOut,
-      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0,
-      '--wide'
+      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0
     )
+
+    if ($useWide) {
+      $cmdArgs += '--wide'       # [ADDED] добавляем --wide только если включено
+    }
 
     Set-Content -Encoding UTF8 -Path $logFile -Value ("[CMD] {0} {1}" -f $exe, ($cmdArgs -join ' '))
     $start = Get-Date
@@ -160,7 +178,9 @@ function Start-TaylorTask {
   }
 
   $job = Start-Job -ScriptBlock $sb -ArgumentList `
-    $exe,$gVal,$kVal,$dtVal,$logEv,$tmpOut,$logFile,$commonEnv,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0
+    $exe,$gVal,$kVal,$dtVal,$logEv,$tmpOut,$logFile,$commonEnv,`
+    $N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0,`
+    $useWide                      # [ADDED] передаём флаг в job
 
   return [pscustomobject]@{
     Job     = $job
@@ -170,6 +190,7 @@ function Start-TaylorTask {
     G       = $gVal
     K       = $kVal
     DT      = $dtVal
+    Wide    = $useWide           # [ADDED] запоминаем, ожидали ли wide для этой задачи
   }
 }
 
@@ -193,7 +214,8 @@ function Finalize-Job {
     Move-Item -Force $f.FullName $tgt
   }
 
-  if (-not (Test-Path (Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)))) {
+  # [CHANGED] предупреждение про отсутствие wide только если мы его вообще ожидали
+  if ($ctx.Wide -and -not (Test-Path (Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)))) {
     Write-Warning "Wide CSV not produced for g=$($ctx.G) K=$($ctx.K) dt=$($ctx.DT). Check flags."
   }
 
@@ -229,7 +251,8 @@ foreach ($t in $tasks) {
   $ctx = Start-TaylorTask -t $t `
     -exe $exe -baseTaylor $baseTaylor -envMap $commonEnv `
     -N $N -xmax $xmax -tmax $tmax -evolveSwitch $evolveSwitch `
-    -Init $Init -X0 $X0 -Sigma $Sigma -K0 $K0 -U0 $U0 -PktTag $PktTag
+    -Init $Init -X0 $X0 -Sigma $Sigma -K0 $K0 -U0 $U0 -PktTag $PktTag `
+    -EnableWideGlobal $ENABLE_WIDE_GLOBAL      # [ADDED] пробрасываем глобальный флаг
 
   $active += $ctx
   $started++
