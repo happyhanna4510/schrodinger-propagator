@@ -11,7 +11,6 @@
 #       rk4_g{...}__abs2.csv
 #       rk4_g{...}__metrics.csv
 # ============================================
-
 try {
   chcp 65001 | Out-Null
   [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
@@ -37,11 +36,15 @@ Write-Host "Using binary: $exe" -ForegroundColor Green
 
 # --- PARAMETERS ---
 $gammas = @(10, 20)
-$dts    =@('1e-6','1e-5','1e-4','1e-3','1e-2','1e-1')
+$dts    = @('1e-6','1e-5','1e-4','1e-3','1e-2','1e-1')
 $N      = 2001
 $xmax   = 20
 $tmax   = 15
 $TARGET_LOG_LINES = 100
+
+$ENABLE_WIDE_GLOBAL = $false         # [ADDED] включить wide для ВСЕХ задач, если $true
+$wideDts            = @() # [ADDED] dt, для которых wide включается локально, если глобальный флаг = $false
+# можно сделать @() если хочешь управлять только через глобальный флаг
 
 # Initial state (tagging)
 $Init  = 'complex-gauss'
@@ -55,7 +58,7 @@ $PktTag = ("cg_x0_{0}_s{1}_k{2}_u{3}" -f $X0, $Sigma, $K0, $U0).Replace('.', 'p'
 $resultsRoot = Join-Path $repo 'results'
 $baseRK4     = Join-Path $resultsRoot 'rk4'
 $baseMorse   = Join-Path $resultsRoot 'morse'
-New-Item -ItemType Directory -Force -Path $baseRK4 | Out-Null
+New-Item -ItemType Directory -Force -Path $baseRK4   | Out-Null
 New-Item -ItemType Directory -Force -Path $baseMorse | Out-Null
 
 # --- PARALLELISM ---
@@ -86,6 +89,8 @@ foreach ($g in ($gammas | Select-Object -Unique)) {
   }
 }
 
+function Tokenize([string]$s) { return ($s -replace 'e-','e_') -replace '-','_' }
+
 # --- 2) BUILD TASK LIST (gamma × dt) ---
 $tasks = foreach ($g in $gammas) {
   foreach ($dt in $dts) {
@@ -98,12 +103,13 @@ $tasks = foreach ($g in $gammas) {
 $total = $tasks.Count
 Write-Host ("[rk4] launching {0} tasks with up to {1} parallel jobs..." -f $total, $maxJobs) -ForegroundColor Yellow
 
-function Tokenize([string]$s) { return ($s -replace 'e-','e_') -replace '-','_' }
-
 # --- Start one RK4 job ---
 function Start-RK4Task {
-  param($t, $exe, $baseRK4, $envMap, $N, $xmax, $tmax,
-        $Init,$X0,$Sigma,$K0,$U0,$PktTag)
+  param(
+    $t, $exe, $baseRK4, $envMap, $N, $xmax, $tmax,
+    $Init,$X0,$Sigma,$K0,$U0,$PktTag,
+    $EnableWideGlobal             # [ADDED] глобальный флаг wide внутрь задачи
+  )
 
   $gVal  = [int]$t.gamma
   $dtVal = [string]$t.dt
@@ -111,7 +117,17 @@ function Start-RK4Task {
 
   $dtTok = Tokenize $dtVal
 
-  # results/rk4/g{g}/K4/dt_{dtTok}/
+  # [ADDED] логика включения wide:
+  # 1) если глобальный флаг включён -> wide=true для всех;
+  # 2) иначе wide=true только если dt в списке $wideDts
+  $useWide = $false
+  if ($EnableWideGlobal) {
+    $useWide = $true
+  } elseif ($wideDts -contains $dtVal) {
+    $useWide = $true
+  }
+
+  # results/rk4/g{g}/dt_{dtTok}/
   $sub = Join-Path $baseRK4 ("g{0}\dt_{1}" -f $gVal, $dtTok)
   New-Item -ItemType Directory -Force -Path $sub | Out-Null
 
@@ -124,10 +140,15 @@ function Start-RK4Task {
   New-Item -ItemType Directory -Force -Path $tmpOut | Out-Null
 
   $logFile = Join-Path $sub "run.log"
-  Write-Host ("START [rk4] g={0}  dt={1}  -> {2}" -f $gVal,$dtVal,$csvBase) -ForegroundColor Cyan
+  Write-Host ("START [rk4] g={0}  dt={1}  wide={2} -> {3}" -f `  # [CHANGED] добавлен вывод wide
+              $gVal,$dtVal,$useWide,$csvBase) -ForegroundColor Cyan
 
   $sb = {
-    param($exe,$gVal,$dtVal,$logEv,$tmpOut,$logFile,$envMap,$N,$xmax,$tmax,$Init,$X0,$Sigma,$K0,$U0)
+    param(
+      $exe,$gVal,$dtVal,$logEv,$tmpOut,$logFile,$envMap,
+      $N,$xmax,$tmax,$Init,$X0,$Sigma,$K0,$U0,
+      $useWide                           # [ADDED] флаг wide внутрь job'а
+    )
 
     foreach ($k in $envMap.Keys) { [Environment]::SetEnvironmentVariable($k, $envMap[$k], "Process") }
 
@@ -137,9 +158,12 @@ function Start-RK4Task {
       '--tmax',$tmax,'--log-every',$logEv,
       '--N',$N,'--xmax',$xmax,
       '--outdir',$tmpOut,
-      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0,
-      '--wide'
+      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0
     )
+
+    if ($useWide) {
+      $cmdArgs += '--wide'                # [ADDED] wide только если нужно
+    }
 
     Set-Content -Encoding UTF8 -Path $logFile -Value ("[CMD] {0} {1}" -f $exe, ($cmdArgs -join ' '))
     $start = Get-Date
@@ -155,7 +179,9 @@ function Start-RK4Task {
   }
 
   $job = Start-Job -ScriptBlock $sb -ArgumentList `
-    $exe,$gVal,$dtVal,$logEv,$tmpOut,$logFile,$commonEnv,$N,$xmax,$tmax,$Init,$X0,$Sigma,$K0,$U0
+    $exe,$gVal,$dtVal,$logEv,$tmpOut,$logFile,$commonEnv,`
+    $N,$xmax,$tmax,$Init,$X0,$Sigma,$K0,$U0,`
+    $useWide                            # [ADDED] пробрасываем флаг wide
 
   return [pscustomobject]@{
     Job     = $job
@@ -164,6 +190,7 @@ function Start-RK4Task {
     CsvBase = $csvBase
     G       = $gVal
     DT      = $dtVal
+    Wide    = $useWide                 # [ADDED] сохраняем, ожидали ли wide
   }
 }
 
@@ -186,7 +213,8 @@ function Finalize-Job {
     Move-Item -Force $f.FullName $tgt
   }
 
-  if (-not (Test-Path (Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)))) {
+  # [CHANGED] предупреждение только если wide ожидался
+  if ($ctx.Wide -and -not (Test-Path (Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)))) {
     Write-Warning "Wide CSV not produced for g=$($ctx.G) dt=$($ctx.DT). Check flags."
   }
 
@@ -222,7 +250,8 @@ foreach ($t in $tasks) {
   $ctx = Start-RK4Task -t $t `
     -exe $exe -baseRK4 $baseRK4 -envMap $commonEnv `
     -N $N -xmax $xmax -tmax $tmax `
-    -Init $Init -X0 $X0 -Sigma $Sigma -K0 $K0 -U0 $U0 -PktTag $PktTag
+    -Init $Init -X0 $X0 -Sigma $Sigma -K0 $K0 -U0 $U0 -PktTag $PktTag `
+    -EnableWideGlobal $ENABLE_WIDE_GLOBAL      # [ADDED] глобальный флаг
 
   $active += $ctx
   $started++

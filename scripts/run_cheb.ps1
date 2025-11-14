@@ -42,6 +42,10 @@ $tmax   = 15
 $TARGET_LOG_LINES = 100
 $evolveSwitch = '--evolve_only'
 
+$ENABLE_WIDE_GLOBAL = $false            # [ADDED] глобальный wide для ВСЕХ задач, если $true
+$wideDts            = @()  # [ADDED] локально wide для этих dt, если глобальный = $false
+# можешь сделать @() если хочешь управлять только через $ENABLE_WIDE_GLOBAL
+
 # Init (tagging like Taylor)
 $Init  = 'complex-gauss'
 $X0    = 0
@@ -104,8 +108,11 @@ Write-Host ("[cheb] launching {0} tasks with up to {1} parallel jobs..." -f $tot
 
 # --- Start one CHEB job ---
 function Start-ChebTask {
-  param($t, $exe, $baseCheb, $envMap, $N, $xmax, $tmax, $evolveSwitch,
-        $Init,$X0,$Sigma,$K0,$U0,$PktTag)
+  param(
+    $t, $exe, $baseCheb, $envMap, $N, $xmax, $tmax, $evolveSwitch,
+    $Init,$X0,$Sigma,$K0,$U0,$PktTag,
+    $EnableWideGlobal              # [ADDED] пробрасываем глобальный wide внутрь
+  )
 
   $gVal   = [int]$t.gamma
   $dtVal  = [string]$t.dt
@@ -114,6 +121,16 @@ function Start-ChebTask {
 
   $dtTok  = Tokenize $dtVal
   $tolTok = Tokenize $tolVal
+
+  # [ADDED] логика включения wide:
+  # 1) если глобальный флаг включён -> wide для всех;
+  # 2) иначе wide только если dt ∈ $wideDts.
+  $useWide = $false
+  if ($EnableWideGlobal) {
+    $useWide = $true
+  } elseif ($wideDts -contains $dtVal) {
+    $useWide = $true
+  }
 
   # results/cheb/g{g}/dt_{dt}/tol_{tol}/
   $sub = Join-Path $baseCheb ("g{0}\dt_{1}\tol_{2}" -f $gVal, $dtTok, $tolTok)
@@ -128,10 +145,12 @@ function Start-ChebTask {
   New-Item -ItemType Directory -Force -Path $tmpOut | Out-Null
 
   $logFile = Join-Path $sub "run.log"
-  Write-Host ("START [cheb] g={0}  dt={1}  tol={2}  -> {3}" -f $gVal,$dtVal,$tolVal,$csvBase) -ForegroundColor Cyan
+  Write-Host ("START [cheb] g={0}  dt={1}  tol={2}  wide={3} -> {4}" -f `  # [CHANGED] добавлен wide в лог
+              $gVal,$dtVal,$tolVal,$useWide,$csvBase) -ForegroundColor Cyan
 
   $sb = {
-    param($exe,$gVal,$dtVal,$tolVal,$logEv,$tmpOut,$logFile,$envMap,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0)
+    param($exe,$gVal,$dtVal,$tolVal,$logEv,$tmpOut,$logFile,$envMap,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0,
+          $useWide)                    # [ADDED] wide внутрь job'а
 
     foreach ($k in $envMap.Keys) { [Environment]::SetEnvironmentVariable($k, $envMap[$k], "Process") }
 
@@ -141,9 +160,12 @@ function Start-ChebTask {
       '--tol',$tolVal,'--log-every',$logEv,
       '--N',$N,'--xmax',$xmax,
       '--outdir',$tmpOut,
-      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0,
-      '--wide'             # ⬅️ генерим wide-выгрузку, как в Taylor
+      '--init',$Init,'--x0',$X0,'--sigma',$Sigma,'--k0',$K0,'--U0',$U0
     )
+
+    if ($useWide) {
+      $cmdArgs += '--wide'             # [ADDED] добавляем --wide только если нужно
+    }
 
     Set-Content -Encoding UTF8 -Path $logFile -Value ("[CMD] {0} {1}" -f $exe, ($cmdArgs -join ' '))
     $start = Get-Date
@@ -159,7 +181,8 @@ function Start-ChebTask {
   }
 
   $job = Start-Job -ScriptBlock $sb -ArgumentList `
-    $exe,$gVal,$dtVal,$tolVal,$logEv,$tmpOut,$logFile,$commonEnv,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0
+    $exe,$gVal,$dtVal,$tolVal,$logEv,$tmpOut,$logFile,$commonEnv,$N,$xmax,$tmax,$evolveSwitch,$Init,$X0,$Sigma,$K0,$U0,`
+    $useWide                        # [ADDED] пробрасываем флаг wide
 
   return [pscustomobject]@{
     Job     = $job
@@ -169,6 +192,7 @@ function Start-ChebTask {
     G       = $gVal
     DT      = $dtVal
     TOL     = $tolVal
+    Wide    = $useWide              # [ADDED] запоминаем, ожидали ли wide
   }
 }
 
@@ -192,7 +216,8 @@ function Finalize-Job {
     Move-Item -Force $f.FullName $tgt
   }
 
-  if (-not (Test-Path (Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)))) {
+  # [CHANGED] предупреждаем только если wide реально ожидался
+  if ($ctx.Wide -and -not (Test-Path (Join-Path $ctx.SubDir ("{0}__abs2_wide.csv" -f $ctx.CsvBase)))) {
     Write-Warning "Wide CSV not produced for g=$($ctx.G) dt=$($ctx.DT) tol=$($ctx.TOL). Check flags."
   }
 
@@ -228,7 +253,8 @@ foreach ($t in $tasks) {
   $ctx = Start-ChebTask -t $t `
     -exe $exe -baseCheb $baseCheb -envMap $commonEnv `
     -N $N -xmax $xmax -tmax $tmax -evolveSwitch $evolveSwitch `
-    -Init $Init -X0 $X0 -Sigma $Sigma -K0 $K0 -U0 $U0 -PktTag $PktTag
+    -Init $Init -X0 $X0 -Sigma $Sigma -K0 $K0 -U0 $U0 -PktTag $PktTag `
+    -EnableWideGlobal $ENABLE_WIDE_GLOBAL      # [ADDED] глобальный флаг wide
 
   $active += $ctx
   $started++
@@ -248,5 +274,3 @@ foreach ($ctx in @($active)) {
 }
 
 Write-Host ("All Chebyshev tasks finished. Total: {0}. Max parallel: {1}. Output: {2}" -f $total, $maxJobs, $resultsRoot) -ForegroundColor Green
-
-
