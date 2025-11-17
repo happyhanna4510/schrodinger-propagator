@@ -1,6 +1,7 @@
 #include "runtime_evolution.hpp"
 
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues> // [ TEST] required for eigenstate-based initialization
 
 #include <algorithm>
 #include <cctype>
@@ -9,6 +10,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <stdexcept> // [ TEST] for eigen init error handling
 #include <string>
 #include <vector>
 
@@ -20,6 +22,7 @@
 #include "io.hpp"
 #include "test_time_reversibility.hpp"
 
+
 namespace fs = std::filesystem;
 
 fs::path run_time_evolution(const Grid& g,
@@ -27,16 +30,43 @@ fs::path run_time_evolution(const Grid& g,
                             const Params& P,
                             const fs::path& out_dir) {
     std::vector<double> U_evol = U_true;
-    double cur_max = *std::max_element(U_evol.begin(), U_evol.end());
-    double scale = (cur_max > 0.0) ? (P.Umax / cur_max) : 1.0;
-    for (double& v : U_evol) {
-        v *= scale;
+    const auto minmax_true = std::minmax_element(U_true.begin(), U_true.end());
+    double cur_max = 0.0;
+    if (!U_true.empty()) {
+        cur_max = *minmax_true.second;
+    }
+
+    double scale = 1.0;
+    bool scaling_applied = false;
+    if (P.Umax_specified && P.Umax > 0.0) {
+        // [AI PATCH] Only scale the Morse potential when the user requested a cap via --Umax/--Vcap.
+        scale = (cur_max > 0.0) ? (P.Umax / cur_max) : 1.0;
+        for (double& v : U_evol) {
+            v *= scale;
+        }
+        scaling_applied = true;
+    }
+
+    const auto minmax_scaled = std::minmax_element(U_evol.begin(), U_evol.end());
+    double scaled_min = 0.0;
+    double scaled_max = 0.0;
+    if (!U_evol.empty()) {
+        scaled_min = *minmax_scaled.first;
+        scaled_max = *minmax_scaled.second;
     }
 
     if (!P.quiet) {
-        std::cout << "# Evolution scaling: current max(U)=" << cur_max
-                  << ", target Umax=" << P.Umax
-                  << ", scale=" << scale << "\n";
+        if (scaling_applied) {
+            std::cout << "# [PATCH] Evolution scaling: current max(U)=" << cur_max
+                      << ", target Umax=" << P.Umax
+                      << ", scale=" << scale << "\n";
+        } else {
+            std::cout << "# [PATCH] Evolution scaling: using raw Morse potential (scale=1)\n";
+        }
+        // [ PATCH] added diagnostic to confirm the Morse potential is active during evolution
+        std::cout << "# [PATCH] [evolve] using Morse potential with gamma=" << P.gamma
+                  << ", V_min=" << scaled_min
+                  << ", V_max=" << scaled_max << "\n";
     }
 
     Eigen::MatrixXd H_evol = build_hamiltonian(g, U_evol, P.U0);
@@ -45,6 +75,27 @@ fs::path run_time_evolution(const Grid& g,
     Eigen::VectorXcd psi_init;
     if (P.init == "real-gauss") {
         psi_init = gaussian_on_inner(g, P.x0, P.sigma).cast<std::complex<double>>();
+    } else if (P.init == "eigen") {
+        Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es_init(H_evol); // [ TEST] diagonalize for eigen init
+        if (es_init.info() != Eigen::Success) {
+            throw std::runtime_error("eigensolve failed while preparing eigen init"); // [TEST] propagate solver issues
+        }
+        Eigen::MatrixXd Vreal = es_init.eigenvectors();
+        renormalize_eigenvectors(Vreal, g.dx); // [ TEST] ensure orthonormality on the grid
+        int n = P.eigen_index;
+        if (n < 0 || n >= Vreal.cols()) {
+            throw std::runtime_error("--eigen_index out of range for available Morse eigenstates"); // [TEST] guard invalid index
+        }
+        psi_init = Vreal.col(n).cast<std::complex<double>>();
+        double norm = psi_init.norm();
+        if (norm > 0.0) {
+            psi_init /= norm; // [ TEST] safety normalization
+        }
+        if (!P.quiet) {
+            double energy = es_init.eigenvalues()(n);
+            std::cout << "# [PATCH TEST] [init] using Morse eigenstate n=" << n
+                      << ", E_num=" << energy << "\n";
+        }
     } else {
         psi_init = gaussian_complex_on_inner(g, P.x0, P.sigma, P.k0);
     }

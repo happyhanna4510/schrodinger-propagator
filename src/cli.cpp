@@ -89,10 +89,12 @@ Params parse_args(int argc, char** argv) {
         else if (s == "--xmax")     getd(i, p.xmax);
         else if (s == "--gamma")    getd(i, p.gamma);
 
-        else if (s == "--Umax")     getd(i, p.Umax);
-        else if (s == "--Vcap")     getd(i, p.Umax); // alias
+        else if (s == "--Umax")  { getd(i, p.Umax); p.Umax_specified = true; }
+        else if (s == "--Vcap")  { getd(i, p.Umax); p.Umax_specified = true; } // alias
 
         else if (s == "--init") { gets(i, p.init); }
+        else if (s == "--eigen_index" || s == "--eigen-index") { geti(i, p.eigen_index); p.eigen_index_specified = true; } // [ TEST] parse eigen index selector
+
         else if (s == "--x0")       getd(i, p.x0);
         else if (s == "--sigma")    getd(i, p.sigma);
         else if (s == "--k0")      { getd(i, p.k0); k0_specified = true; }
@@ -131,9 +133,13 @@ Params parse_args(int argc, char** argv) {
     }
 
     p.init = canonicalize_init(p.init);
-    if (p.init != "complex-gauss" && p.init != "real-gauss") {
-        std::cerr << "error: --init must be 'complex-gauss' or 'real-gauss' (got '" << p.init << "')\n";
+    if (p.init != "complex-gauss" && p.init != "real-gauss" && p.init != "eigen") {
+        std::cerr << "error: --init must be 'complex-gauss', 'real-gauss', or 'eigen' (got '" << p.init << "')\n"; // [AI PATCH TEST] allow eigen init option
         std::exit(1);
+    }
+
+    if (p.init == "eigen" && !p.eigen_index_specified) {
+        p.eigen_index = 0; // [ TEST] default to ground state when user omits --eigen_index
     }
 
     if (p.sigma <= 0.0) {
@@ -144,5 +150,6 @@ Params parse_args(int argc, char** argv) {
     p.k0_specified = k0_specified;
 
     return p;
+
 }
 

@@ -6,12 +6,21 @@ struct Params {
     double xmax     = 20.0;
     double gamma    = 10.0;
     double Umax     = 0.1;
+    bool   Umax_specified = false; //track whether scaling cap was explicitly requested
+
     std::string init      = "complex-gauss";
     double x0              = 0.0;
     double sigma           = 1.0;
     double k0              = 10.0;
-    double U0              = 0.0;
+    
+    double U0              = 0.0;   // Uniform field amplitude U0=0 (H = H0 + (U0/xmax)*X)
     bool   k0_specified    = false;
+
+    int    eigen_index          = 0;  // [ TEST] default Morse eigenstate index for --init eigen
+    bool   eigen_index_specified = false; // [ TEST] track whether user provided --eigen_index
+
+
+
 
     // evolution parameters
     bool   do_evolve     = false;
