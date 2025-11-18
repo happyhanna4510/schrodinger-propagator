@@ -1,0 +1,12 @@
+method,step,t,dt,dt_ms,matvecs,norm_err,theta_abs,theta_rel
+rk4,1,0.001000,0.001,0.158,4,6.661338e-16,1.465438e-13,2.147509e-26
+rk4,1001,1.001000,0.001,0.071,4,nan,-nan(ind),-nan(ind)
+rk4,2001,2.001000,0.001,0.045,4,nan,-nan(ind),-nan(ind)
+rk4,3001,3.001000,0.001,0.073,4,nan,-nan(ind),-nan(ind)
+rk4,4001,4.001000,0.001,0.045,4,nan,-nan(ind),-nan(ind)
+rk4,5001,5.001000,0.001,0.045,4,nan,-nan(ind),-nan(ind)
+rk4,6001,6.001000,0.001,0.045,4,nan,-nan(ind),-nan(ind)
+rk4,7001,7.001000,0.001,0.045,4,nan,-nan(ind),-nan(ind)
+rk4,8001,8.001000,0.001,0.045,4,nan,-nan(ind),-nan(ind)
+rk4,9001,9.001000,0.001,0.046,4,nan,-nan(ind),-nan(ind)
+rk4,10000,10.000000,0.001,0.045,4,nan,-nan(ind),-nan(ind)

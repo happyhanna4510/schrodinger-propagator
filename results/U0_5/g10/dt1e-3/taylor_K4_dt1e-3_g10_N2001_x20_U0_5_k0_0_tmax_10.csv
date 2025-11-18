@@ -1,0 +1,12 @@
+method,step,t,dt,dt_ms,matvecs,norm_err,theta_abs,theta_rel
+taylor,1,0.001000,0.001,0.069,4,2.220446e-16,1.170062e-14,1.369044e-28
+taylor,1001,1.001000,0.001,0.032,4,nan,-nan(ind),-nan(ind)
+taylor,2001,2.001000,0.001,0.033,4,nan,-nan(ind),-nan(ind)
+taylor,3001,3.001000,0.001,0.032,4,nan,-nan(ind),-nan(ind)
+taylor,4001,4.001000,0.001,0.055,4,nan,-nan(ind),-nan(ind)
+taylor,5001,5.001000,0.001,0.034,4,nan,-nan(ind),-nan(ind)
+taylor,6001,6.001000,0.001,0.033,4,nan,-nan(ind),-nan(ind)
+taylor,7001,7.001000,0.001,0.033,4,nan,-nan(ind),-nan(ind)
+taylor,8001,8.001000,0.001,0.036,4,nan,-nan(ind),-nan(ind)
+taylor,9001,9.001000,0.001,0.032,4,nan,-nan(ind),-nan(ind)
+taylor,10000,10.000000,0.001,0.032,4,nan,-nan(ind),-nan(ind)
