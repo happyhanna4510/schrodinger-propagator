@@ -29,6 +29,12 @@ set(SOURCES
     src/runtime_evolution.cpp
     src/snapshots.cpp)
 
+
+if (MSVC)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+endif()
+
+
 add_executable(morse ${SOURCES})
 
 target_include_directories(morse PRIVATE ${CMAKE_SOURCE_DIR}/include)

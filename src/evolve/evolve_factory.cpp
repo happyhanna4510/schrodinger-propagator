@@ -19,6 +19,7 @@
 #include "evolve/evolve_taylor.hpp"
 #include "io.hpp"
 
+
 namespace {
 
 struct IntervalAgg {
@@ -132,6 +133,30 @@ void evolve(const std::string& method,
     cfg.no_theta = no_theta;
     cfg.profile = profile;
 
+    const char* theta_debug_env = std::getenv("THETA_DEBUG");
+    const bool theta_debug_enabled = theta_debug_env && theta_debug_env[0] != '\0';
+    double theta_debug_lo = 3.5;
+    double theta_debug_hi = 4.5;
+    if (const char* win_env = std::getenv("THETA_DEBUG_WINDOW")) {
+        std::string win_str(win_env);
+        const auto pos = win_str.find_first_of(",;:");
+        if (pos != std::string::npos) {
+            try {
+                theta_debug_lo = std::stod(win_str.substr(0, pos));
+                theta_debug_hi = std::stod(win_str.substr(pos + 1));
+                if (theta_debug_lo > theta_debug_hi) {
+                    std::swap(theta_debug_lo, theta_debug_hi);
+                }
+            } catch (...) {
+                std::cerr << "# [theta-debug] failed to parse THETA_DEBUG_WINDOW='"
+                          << win_str << "' (expected <lo>,<hi>)\n";
+            }
+        } else {
+            std::cerr << "# [theta-debug] THETA_DEBUG_WINDOW='" << win_str
+                      << "' missing delimiter ',' ';' or ':'\n";
+        }
+    }
+
     std::unique_ptr<EvolverBase> evolver;
 
     if (method_norm == "taylor") {
@@ -172,6 +197,15 @@ void evolve(const std::string& method,
         long long samples = 0;
     } profile_acc;
 
+
+    auto compute_reference_state = [&](double time) {
+        constexpr std::complex<double> I(0.0, 1.0);
+        Eigen::ArrayXcd phase = (-I * spectral.evals.array() * time).exp();
+        Eigen::VectorXcd coeffs = (spectral.coeffs0.array() * phase).matrix();
+        return spectral.eigenvectors * coeffs;
+    };
+
+
     for (int step = 0; step < nsteps; ++step)
     {
         const auto start = std::chrono::steady_clock::now();
@@ -210,6 +244,44 @@ void evolve(const std::string& method,
 
             }
             const int step_out = step + 1;
+
+
+            if (theta_debug_enabled && std::isfinite(theta_abs)) {
+                const double t_num = t;
+                const double t_ref = static_cast<double>(step_out) * dt;
+                std::streamsize old_prec = std::cout.precision();
+                std::ios::fmtflags old_flags = std::cout.flags();
+                std::cout.setf(std::ios::scientific);
+                std::cout << "# [theta-debug-time] step=" << step_out
+                          << " t_num=" << std::setprecision(15) << t_num
+                          << " t_ref=" << std::setprecision(15) << t_ref
+                          << " theta_abs=" << std::setprecision(6) << theta_abs
+                          << '\n';
+                std::cout.precision(old_prec);
+                std::cout.flags(old_flags);
+            }
+
+            const bool in_theta_window = theta_debug_enabled &&
+                                         (t >= theta_debug_lo) && (t <= theta_debug_hi);
+            if (in_theta_window) {
+                Eigen::VectorXcd psi_ref = compute_reference_state(t);
+                std::complex<double> z = inner_dx(psi_ref, psi, dx);
+                const double theta_raw = std::arg(z);
+                const double z_abs = std::abs(z);
+                std::streamsize old_prec = std::cout.precision();
+                std::ios::fmtflags old_flags = std::cout.flags();
+                std::cout.setf(std::ios::scientific);
+                std::cout << "# [theta-debug-overlap] t=" << std::setprecision(9) << t
+                          << " Re=" << std::setprecision(6) << z.real()
+                          << " Im=" << std::setprecision(6) << z.imag()
+                          << " |z|=" << std::setprecision(6) << z_abs
+                          << " theta_raw=" << std::setprecision(6) << theta_raw
+                          << " theta_abs=" << std::setprecision(6) << theta_abs
+                          << '\n';
+                std::cout.precision(old_prec);
+                std::cout.flags(old_flags);
+            }
+
 
             if (csv.is_open() && ((cfg.csv_every <= 1) || (tick_counter % cfg.csv_every) == 0)) {
                 write_step_csv_row(csv, method_norm, step_out, t, dt, stats.dt_ms,
