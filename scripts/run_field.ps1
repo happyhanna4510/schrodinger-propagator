@@ -10,23 +10,18 @@ $N    = 2001
 $xmax = 20
 $tmax = 10
 $k0   = 0
+$logEvery = 100  
 
 # --- methods ---
-$methods = @("cheb", "rk4", "taylor")
+$methods = @("cheb")
+# $methods = @("cheb", "rk4", "taylor")
+
 $taylorK = 4
 
-# =============================
-# CONFIG: choose what to run
-# =============================
 
-# Case 1: weak field, U0 = ±1, gamma = 10, dt = 1e-5
-$U0List    = @(-1, 1)
+$U0List    = @(-1, 1, 5, -5, -100, -30)
 $gammaList = @(10)
-$dtList    = @("1e-4","1e-3")
-
-# For strong field (later) you can change to e.g.:
-# $U0List    = @(-30)
-# $gammaList = @(10)
+$dtList    = @("1e-3")
 # $dtList    = @("1e-5","1e-4","1e-3")
 
 # =============================
@@ -61,6 +56,7 @@ foreach ($U0 in $U0List) {
             Write-Host ""
             Write-Host ">>> U0 = $U0, gamma = $gamma, dt = $dtStr"
             Write-Host "    outdir = $dtFolderPath"
+            Write-Host "    log-every = $logEvery steps"
 
             foreach ($method in $methods) {
 
@@ -79,17 +75,18 @@ foreach ($U0 in $U0List) {
 
                 # common args (without --evolve / --K)
                 $commonArgs = @(
-                    "--gamma",  $gamma,
-                    "--N",      $N,
-                    "--xmax",   $xmax,
-                    "--tmax",   $tmax,
-                    "--dt",     $dtVal,
-                    "--init",   "complex-gauss",
+                    "--gamma",     $gamma,
+                    "--N",         $N,
+                    "--xmax",      $xmax,
+                    "--tmax",      $tmax,
+                    "--dt",        $dtVal,
+                    "--init",      "complex-gauss",
                     "--wide",
-                    "--k0",     $k0,
-                    "--U0",     $U0,
-                    "--outdir", $dtFolderPath,
-                    "--csv",    $csvName
+                    "--k0",        $k0,
+                    "--U0",        $U0,
+                    "--outdir",    $dtFolderPath,
+                    "--csv",       $csvName,
+                    "--log-every", $logEvery    # <=== ВОТ ЗДЕСЬ МЫ ПРОТАСКИВАЕМ ФЛАГ
                 )
 
                 if ($method -eq "taylor") {

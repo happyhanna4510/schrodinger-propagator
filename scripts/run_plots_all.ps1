@@ -10,7 +10,9 @@ $plotsRoot   = ".\plots_out"
 # Jakie wartości U0, gamma i dt uwzględniamy
 $U0List    = @(-1, 1, 5, -5, -30, -100)      # dodawaj / usuwaj jak chcesz
 $gammaList = @(10)                # na razie tylko gamma=10
-$dtList    = @("1e-5","1e-4","1e-3")  # dla U0=-1 możesz użyć tylko "1e-5", to nie szkodzi jeśli folderów nie będzie
+$dtList    = @("1e-3")  # dla U0=-1 możesz użyć tylko "1e-5", to nie szkodzi jeśli folderów nie będzie
+
+#$dtList    = @("1e-5","1e-4","1e-3")  # dla U0=-1 możesz użyć tylko "1e-5", to nie szkodzi jeśli folderów nie będzie
 # =============================
 
 function Ensure-Dir($path) {
