@@ -8,6 +8,14 @@
 #include "core/spectral.hpp"
 #include "core/tridiag.hpp"
 
+struct EnergyLogConfig {
+    bool enabled = false;
+    const std::vector<double>* potential = nullptr;
+    double hbar = 1.0;
+    double mass = 1.0;
+    std::string csv_path;
+};
+
 void evolve(const std::string& method,
             const Tridiag& T,
             const SpectralData& spectral,
@@ -27,5 +35,6 @@ void evolve(const std::string& method,
             bool aggregate,
             int flush_every,
             bool no_theta,
-            bool profile);
+            bool profile,
+            const EnergyLogConfig& energy_cfg = EnergyLogConfig{});
 

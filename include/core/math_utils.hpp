@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 
 #include <complex>
+#include <vector>
 
 #include "core/tridiag.hpp"
 
@@ -14,6 +15,12 @@ double l2_norm_sq(const Eigen::VectorXcd& v, double dx);
 double l2_norm(const Eigen::VectorXcd& v, double dx);
 
 double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx);
+
+double compute_energy(const Eigen::VectorXcd& psi,
+                      const std::vector<double>& potential,
+                      double dx,
+                      double hbar,
+                      double mass);
 
 void tridiag_mul(const Tridiag& T,
                  const Eigen::VectorXcd& x,

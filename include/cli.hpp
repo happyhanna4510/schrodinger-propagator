@@ -34,6 +34,7 @@ struct Params {
     bool   aggregate  = false;
     int    flush_every = 1000;
     bool   no_theta    = false;
+    bool   log_energy  = false;
 
     int    first     = 10;
     std::string outdir   = "results";
