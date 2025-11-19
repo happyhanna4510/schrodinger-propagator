@@ -69,6 +69,14 @@ fs::path run_time_evolution(const Grid& g,
                   << ", V_max=" << scaled_max << "\n";
     }
 
+    const double field_coeff = (g.xmax != 0.0) ? (P.U0 / g.xmax) : 0.0;
+    std::vector<double> U_energy_inner;
+    U_energy_inner.reserve(std::max(0, g.N - 2));
+    for (int i = 1; i < g.N - 1; ++i) {
+        const std::size_t idx = static_cast<std::size_t>(i);
+        U_energy_inner.push_back(U_evol[idx] + field_coeff * g.x[idx]);
+    }
+
     Eigen::MatrixXd H_evol = build_hamiltonian(g, U_evol, P.U0);
     Tridiag T = make_tridiag_from_dense(H_evol);
 
@@ -174,11 +182,22 @@ fs::path run_time_evolution(const Grid& g,
         }
     }
 
+    EnergyLogConfig energy_cfg;
+    if (P.log_energy) {
+        energy_cfg.enabled = true;
+        energy_cfg.potential = &U_energy_inner;
+        energy_cfg.hbar = 1.0;
+        energy_cfg.mass = 1.0;
+        const fs::path energy_path = io::make_energy_csv_path(csv_path);
+        energy_cfg.csv_path = energy_path.string();
+    }
+
     evolve(method, T, spectral, psi_init, g.dx, dt, tol, nsteps, K,
            csv_path.string(), x_ptr,
            P.wide_re, P.wide_im, P.quiet,
            P.log_every, P.csv_every, P.aggregate,
-           P.flush_every, P.no_theta, P.profile);
+           P.flush_every, P.no_theta, P.profile,
+           energy_cfg);
 
     if (!P.quiet) {
         std::cout << "# log saved to: " << csv_path.string() << "\n";

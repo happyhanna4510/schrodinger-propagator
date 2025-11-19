@@ -5,12 +5,14 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <filesystem>
 
 #include "core/io_utils.hpp"
 #include "core/math_utils.hpp"
@@ -18,6 +20,8 @@
 #include "evolve/evolve_rk4.hpp"
 #include "evolve/evolve_taylor.hpp"
 #include "io.hpp"
+
+namespace fs = std::filesystem;
 
 
 namespace {
@@ -116,7 +120,8 @@ void evolve(const std::string& method,
             bool aggregate,
             int flush_every,
             bool no_theta,
-            bool profile) {
+            bool profile,
+            const EnergyLogConfig& energy_cfg) {
     const std::string method_norm = normalize_method(method);
     const bool is_cheb = (method_norm == "cheb");
 
@@ -185,6 +190,28 @@ void evolve(const std::string& method,
 
     Eigen::VectorXcd psi = psi_init;
     double t = 0.0;
+
+    const bool energy_logging = energy_cfg.enabled && energy_cfg.potential && !energy_cfg.csv_path.empty();
+    std::ofstream energy_csv;
+    int energy_rows = 0;
+    fs::path energy_path;
+    if (energy_logging) {
+        energy_path = fs::path(energy_cfg.csv_path);
+        std::error_code ec;
+        if (!energy_path.parent_path().empty()) {
+            fs::create_directories(energy_path.parent_path(), ec);
+        }
+        energy_csv.open(energy_path, std::ios::out | std::ios::trunc);
+        if (!energy_csv) {
+            throw std::runtime_error("failed to open energy log csv");
+        }
+        energy_csv << "t,E\n";
+        energy_csv << std::setprecision(16);
+    }
+
+    if (energy_logging && energy_cfg.potential->size() != static_cast<std::size_t>(psi.size())) {
+        throw std::runtime_error("energy logging potential size mismatch");
+    }
 
     IntervalAgg agg;
     int tick_counter = 0;
@@ -290,6 +317,16 @@ void evolve(const std::string& method,
                 ++csv_rows;
                 if (cfg.flush_every > 0 && (csv_rows % cfg.flush_every) == 0) {
                     csv.flush();
+                }
+            }
+
+            if (energy_logging && energy_csv.is_open()) {
+                const double energy_val = compute_energy(psi, *energy_cfg.potential,
+                                                         dx, energy_cfg.hbar, energy_cfg.mass);
+                energy_csv << t << ',' << energy_val << '\n';
+                ++energy_rows;
+                if (cfg.flush_every > 0 && (energy_rows % cfg.flush_every) == 0) {
+                    energy_csv.flush();
                 }
             }
 

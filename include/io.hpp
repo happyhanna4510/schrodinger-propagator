@@ -51,6 +51,8 @@ fs::path make_csv_path(const fs::path& out_dir,
                        int K, double dt,
                        const Grid& g);
 
+fs::path make_energy_csv_path(const fs::path& log_csv_path);
+
 class WideDump {
 public:
     WideDump(const fs::path& csv_path,

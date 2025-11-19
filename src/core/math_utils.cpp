@@ -4,6 +4,8 @@
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <stdexcept>
+#include <vector>
 
 // tworzy strukturę trójdiagonalną (wektory a,b,c) z gęstej macierzy H
 // kopiując diagonalę oraz pod/naddiagonalę
@@ -44,13 +46,39 @@ std::complex<double> inner_dx(const Eigen::VectorXcd& a,
     return dx * a.dot(b);
 }
 
-double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx) 
+double prob_slice(const Eigen::VectorXcd& psi, int i0, int i1, double dx)
 {
     double s = 0.0;
     for (int i = i0; i < i1; ++i) {
         s += std::norm(psi[i]);
     }
     return s * dx;
+}
+
+double compute_energy(const Eigen::VectorXcd& psi,
+                      const std::vector<double>& potential,
+                      double dx,
+                      double hbar,
+                      double mass)
+{
+    const int N = static_cast<int>(psi.size());
+    if (potential.size() != static_cast<size_t>(N)) {
+        throw std::invalid_argument("compute_energy: potential size mismatch with psi");
+    }
+
+    std::complex<double> E = 0.0;
+
+    for (int i = 0; i < N; ++i) {
+        const std::complex<double> a = (i == 0) ? std::complex<double>(0.0, 0.0) : psi[i - 1];
+        const std::complex<double> c = (i == N - 1) ? std::complex<double>(0.0, 0.0) : psi[i + 1];
+        const std::complex<double> b = psi[i];
+
+        E += dx * std::conj(b) * (
+            -(hbar * hbar) / (2.0 * mass) * (a - 2.0 * b + c) / (dx * dx)
+            + potential[static_cast<std::size_t>(i)] * b);
+    }
+
+    return E.real();
 }
 
 //mnoży macierz trójdiagonalną T przez wektor x i zapisuje wynik w y

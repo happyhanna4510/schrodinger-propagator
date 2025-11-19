@@ -1,9 +1,11 @@
 #include "io.hpp"
 #include <iostream>
 #include <iomanip>
+
 #include <fstream>
 #include <cmath>
 
+#include <filesystem>
 #include <sstream>
 
 using std::cout; using std::setw; using std::setprecision; using std::fixed;
@@ -174,6 +176,25 @@ fs::path make_csv_path(const fs::path& out_dir,
          << "_x"  << fmtg(g.xmax);
 
     return out_dir / (stem.str() + ".csv");
+}
+
+fs::path make_energy_csv_path(const fs::path& log_csv_path)
+{
+    fs::path parent = log_csv_path.parent_path();
+    if (parent.empty()) {
+        parent = fs::current_path();
+    }
+
+    const std::string stem = log_csv_path.stem().string();
+    fs::create_directories(parent);
+
+    fs::path candidate = parent / (stem + "_energy.csv");
+    int idx = 1;
+    while (fs::exists(candidate)) {
+        candidate = parent / (stem + "_energy_" + std::to_string(idx) + ".csv");
+        ++idx;
+    }
+    return candidate;
 }
 
 

@@ -36,6 +36,7 @@ void print_help(const char* prog) {
               << "  --outdir <dir>                      Output directory (default results).\n"
               << "  --csv <name>                        Custom CSV filename.\n"
               << "  --log-every <steps>                 Console log cadence.\n"
+              << "  --log-energy                       Enable energy logging (writes separate CSV).\n"
               << "  --csv-every <steps>                 CSV log cadence.\n"
               << "  --flush-every <rows>                CSV flush cadence.\n"
               << "  --aggregate                         Aggregate log timing stats.\n"
@@ -108,6 +109,7 @@ Params parse_args(int argc, char** argv) {
         else if (s == "--K")        geti(i, p.K);
         else if (s == "--tol")      getd(i, p.tol);
         else if (s == "--log" || s == "--log-every") geti(i, p.log_every);
+        else if (s == "--log-energy") p.log_energy = true;
         else if (s == "--csv-every") geti(i, p.csv_every);
         else if (s == "--flush-every") geti(i, p.flush_every);
 
