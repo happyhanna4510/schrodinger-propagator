@@ -42,7 +42,7 @@ $methods = @("cheb", "rk4", "taylor")
 $taylorK = 4
 
 # physics
-$U0List    = @(-1, 1)
+$U0List    = @(-30)
 $gammaList = @(10)
 $dtList    = @("1e-5","1e-4","1e-3")
 
