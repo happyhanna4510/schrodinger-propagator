@@ -1,5 +1,9 @@
 """
 Plot energy E(t) from an energy CSV file produced with --log-energy.
+
+We plot E(t) itself, with a zoomed y-range around E(0).
+In the title we show max |ΔE| and max relative error |ΔE/E0|.
+
 This script never overwrites existing plots: if the target path exists,
 "_N" suffixes are added automatically.
 """
@@ -24,7 +28,7 @@ def make_unique_path(path: Path) -> Path:
 def derive_output_path(csv_path: Path, out: Optional[str]) -> Path:
     target_dir = Path(out) if out else csv_path.parent
     target_dir.mkdir(parents=True, exist_ok=True)
-    base = csv_path.stem + "_energy.png"
+    base = csv_path.stem + ".png"
     candidate = target_dir / base
     return make_unique_path(candidate)
 
@@ -34,11 +38,32 @@ def plot_energy(csv_path: Path, out_path: Path, dpi: int) -> Path:
     if not {"t", "E"}.issubset(df.columns):
         raise ValueError("CSV must contain 't' and 'E' columns")
 
+    t = df["t"].values
+    E = df["E"].values
+    E0 = E[0]
+    dE = E - E0
+    max_abs_dE = float(abs(dE).max())
+    rel_max = float((abs(dE) / abs(E0)).max())
+
     fig, ax = plt.subplots()
-    ax.plot(df["t"], df["E"], label="E(t)")
+
+    ax.plot(t, E, label="E(t)")
+
     ax.set_xlabel("t")
-    ax.set_ylabel("E")
-    ax.set_title("Energy vs time")
+    ax.set_ylabel("E(t)")
+    ax.set_title(
+        f"Energy vs time\n"
+        f"E(0) = {E0:.6g}, max |ΔE| = {max_abs_dE:.2e}, "
+        f"max |ΔE/E(0)| = {rel_max:.2e}"
+    )
+
+    # слегка зумим по Y вокруг E0
+    margin = max_abs_dE * 1.2 if max_abs_dE > 0 else 1e-12
+    ax.set_ylim(E0 - margin, E0 + margin)
+
+    # без offset на оси
+    ax.ticklabel_format(style="plain", axis="y", useOffset=False)
+
     ax.grid(True, alpha=0.3)
     ax.legend()
 
@@ -49,7 +74,7 @@ def plot_energy(csv_path: Path, out_path: Path, dpi: int) -> Path:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Plot energy vs time from CSV")
+    ap = argparse.ArgumentParser(description="Plot energy E(t) from CSV")
     ap.add_argument("csv", type=Path, help="Energy CSV with columns t,E")
     ap.add_argument("--out", type=str, help="Output directory or filename for the plot")
     ap.add_argument("--dpi", type=int, default=140, help="DPI of the saved plot")
