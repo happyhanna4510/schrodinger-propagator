@@ -1,12 +1,3 @@
-
-"""
-Porównanie logów ewolucji:
-- Oczekiwane kolumny: method,step,t,dt,dt_ms,matvecs,norm_err,theta_abs,theta_rel
-- Wybór najlepszego przebiegu dla pary (gamma, dt) po minimalnym końcowym theta_abs.
-- Dla Taylora wybieramy „najlepsze K” (wnioskowane z trybu matvecs) wśród dostępnych logów.
-- Wykresy ograniczone wyłącznie do: norm_err oraz theta_abs (skala log dla błędów).
-"""
-
 import argparse, os, re, math
 from glob import glob
 import pandas as pd
@@ -92,6 +83,13 @@ def load_one(path: str) -> pd.DataFrame:
     for c in num_cols:
         df[c] = pd.to_numeric(df[c], errors="coerce")
 
+    # [NEW] szacujemy tmax z kolumny "t" i zapisujemy jako tmax_guess
+    try:
+        tmax_guess = float(df["t"].max())
+    except Exception:
+        tmax_guess = math.nan
+    df["tmax_guess"] = tmax_guess
+
     # metoda, gamma, ścieżka
     df["method"] = df["method"].astype(str).map(canonical_method)
     df["gamma_str"] = infer_gamma(df, path)
@@ -171,6 +169,11 @@ def main():
     ap.add_argument("--out", default="./plots_out", help="Folder wyjściowy na wykresy.")
     ap.add_argument("--dpi", type=int, default=140, help="DPI zapisanych obrazów.")
     ap.add_argument("--verbose", action="store_true", help="Więcej informacji diagnostycznych.")
+    # [NEW] filtr po tmax i tolerancja
+    ap.add_argument("--tmax", type=float, default=None,
+                    help="Jeśli ustawione, użyj tylko przebiegów z max(t) ≈ tmax.")
+    ap.add_argument("--tmax-tol", type=float, default=0.05,
+                    help="Relatywna tolerancja dopasowania tmax (ułamek wartości tmax).")
     args = ap.parse_args()
 
     ensure_dir(args.out)
@@ -198,6 +201,32 @@ def main():
         print("[WARN] Nie znaleziono żadnych poprawnych logów (sprawdź rozszerzenia i separator).")
         return
 
+    # [NEW] filtrujemy tylko przebiegi z zadanym tmax (np. 100)
+    if args.tmax is not None:
+        wanted = []
+        rel_tol = args.tmax_tol
+        for df in loaded:
+            if "tmax_guess" in df.columns:
+                try:
+                    # tmax_guess zapisaliśmy jako stałą kolumnę – bierzemy pierwszą wartość
+                    tmax_guess = float(df["tmax_guess"].iloc[0])
+                except Exception:
+                    tmax_guess = math.nan
+            else:
+                tmax_guess = math.nan
+
+            if math.isfinite(tmax_guess):
+                if abs(tmax_guess - args.tmax) <= rel_tol * max(1.0, args.tmax):
+                    wanted.append(df)
+
+        if not wanted:
+            print(f"[WARN] Brak logów z tmax ≈ {args.tmax} (tol={rel_tol}).")
+            return
+        if args.verbose:
+            print(f"[INFO] Po filtrze tmax ≈ {args.tmax}: {len(wanted)} przebiegów.")
+        loaded = wanted
+
+
     big = pd.concat(loaded, ignore_index=True)
 
     # porządkujemy zestawy gamma i dt
@@ -218,6 +247,12 @@ def main():
 
     metrics = ["norm_err", "theta_abs"]  # tylko te dwie
     total_plots = 0
+
+    # [NEW] tag dla tmax w nazwie pliku (np. "_tmax100")
+    if args.tmax is not None:
+        tmax_tag = f"_tmax{args.tmax:g}"
+    else:
+        tmax_tag = ""
 
     for g in gammas:
         for dtv in dts:
@@ -259,7 +294,8 @@ def main():
                 ax.set_title(f"gamma={g}, dt={dtv:g} — {metric}")
                 ax.legend(); ax.grid(True, alpha=0.3)
                 fig.tight_layout()
-                fname = f"cmp_gamma{g}_dt{dtv:.0e}_{metric}.png".replace("+", "")
+                # [CHANGED] dodajemy tmax_tag do nazwy, np. "_tmax100"
+                fname = f"cmp_gamma{g}_dt{dtv:.0e}{tmax_tag}_{metric}.png".replace("+", "")
                 fpath = os.path.join(args.out, fname)
                 fig.savefig(fpath, dpi=args.dpi)
                 plt.close(fig)

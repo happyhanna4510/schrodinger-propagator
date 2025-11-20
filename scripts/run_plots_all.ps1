@@ -8,11 +8,9 @@ $plotsRoot   = ".\plots_out"
 
 # --- KONFIGURACJA ---
 # Jakie wartości U0, gamma i dt uwzględniamy
-$U0List    = @(-1, 1, 5, -5, -30, -100)      # dodawaj / usuwaj jak chcesz
+$U0List    = @(1)      # dodawaj / usuwaj jak chcesz
 $gammaList = @(10)                # na razie tylko gamma=10
-$dtList    = @("1e-3")  # dla U0=-1 możesz użyć tylko "1e-5", to nie szkodzi jeśli folderów nie będzie
-
-#$dtList    = @("1e-5","1e-4","1e-3")  # dla U0=-1 możesz użyć tylko "1e-5", to nie szkodzi jeśli folderów nie będzie
+$dtList    = @("1e-5","1e-4","1e-3")  # dla U0=-1 możesz użyć tylko "1e-5", to nie szkodzi jeśli folderów nie będzie
 # =============================
 
 function Ensure-Dir($path) {
@@ -46,7 +44,7 @@ foreach ($U0 in $U0List) {
             Ensure-Dir $outDir
 
             # wykresy błędów (norm_err, theta_abs)
-            python .\scripts\plot_compare_methods.py --root $rootDir --out $outDir
+            python .\scripts\plot_compare_methods.py --root $rootDir --out $outDir --tmax 100
 
             # heatmap + przekroje |psi|^2
             python .\scripts\plot_abs2_wide.py      --results-dir $rootDir --out-dir $outDir
