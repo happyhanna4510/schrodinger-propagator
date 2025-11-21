@@ -21,6 +21,7 @@ struct DensityLogConfig {
     std::vector<double> x_inner;
     std::string num_csv_path;
     std::string ref_csv_path;
+    int every = 1;
 };
 
 void evolve(const std::string& method,

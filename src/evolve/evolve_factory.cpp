@@ -324,7 +324,12 @@ void evolve(const std::string& method,
 
         update_interval(agg, dt_ms, result.matvecs, norm_err, result);
 
-        if (density_logging) {
+        const bool log_density = density_logging &&
+            ((density_cfg.every <= 1) ||
+             ((step % density_cfg.every) == 0) ||
+             (step + 1 == nsteps));
+
+        if (log_density) {
             Eigen::VectorXcd psi_ref = compute_reference_state(t);
             write_density_row(psi, psi_ref, t);
         }
