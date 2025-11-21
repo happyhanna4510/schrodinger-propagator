@@ -55,7 +55,7 @@ double try_get_dx(const Spectral&, ...) {
 double compute_theta(const SpectralData& S,
                      const Eigen::VectorXcd& psi,
                      double t, double dx,
-                     bool relative /*= false*/) 
+                     bool relative /*= false*/)
 {
     static const std::complex<double> iC(0.0, 1.0);
 
@@ -96,6 +96,45 @@ double compute_theta(const SpectralData& S,
         const double denom = std::max(1e-300, C_dok.squaredNorm());
         return std::sqrt(theta_abs / denom); 
     }
+}
+
+
+std::complex<double> compute_overlap_coeffs(const SpectralData& S,
+                                            const Eigen::VectorXcd& psi,
+                                            double t,
+                                            double dx)
+{
+    static const std::complex<double> iC(0.0, 1.0);
+
+    const bool size_match =
+        (S.eigenvectors.rows() == psi.size()) &&
+        (S.eigenvectors.cols() == S.evals.size()) &&
+        (S.eigenvectors.cols() == S.coeffs0.size());
+    if (!size_match) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    auto select_dx = [&](double provided_dx)
+    {
+        double dx_eff = provided_dx;
+
+        const double candidate = try_get_dx(S, std::numeric_limits<double>::quiet_NaN());
+
+        if (std::isfinite(candidate) && candidate > 0.0) {
+            dx_eff = candidate;
+        }
+        if (!std::isfinite(dx_eff) || dx_eff <= 0.0) {
+            dx_eff = 1.0;
+        }
+        return dx_eff;
+    };
+    const double dx_eff = select_dx(dx);
+
+    const Eigen::ArrayXcd phase = (-iC * S.evals.array() * t).exp();
+    const Eigen::VectorXcd C_dok = (S.coeffs0.array() * phase).matrix();
+    const Eigen::VectorXcd C_num = dx_eff * S.eigenvectors.adjoint() * psi;
+
+    return C_dok.adjoint() * C_num;
 }
 
 
