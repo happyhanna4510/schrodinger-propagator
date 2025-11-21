@@ -123,12 +123,14 @@ fs::path run_time_evolution(const Grid& g,
 
     std::vector<double> x_inner;
     const std::vector<double>* x_ptr = nullptr;
-    if (P.wide) {
+    if (P.wide || P.export_ref_density) {
         x_inner.resize(g.N - 2);
         for (int i = 0; i < g.N - 2; ++i) {
             x_inner[i] = g.x[i + 1];
         }
-        x_ptr = &x_inner;
+        if (P.wide) {
+            x_ptr = &x_inner;
+        }
     }
 
     SpectralData spectral = make_spectral_data(H_evol, psi_init, g.dx);
@@ -192,12 +194,29 @@ fs::path run_time_evolution(const Grid& g,
         energy_cfg.csv_path = energy_path.string();
     }
 
+    DensityLogConfig density_cfg;
+    fs::path density_dir;
+    if (P.export_ref_density) {
+        density_cfg.enabled = true;
+        density_cfg.x_inner = x_inner;
+        density_cfg.every = std::max(1, P.log_every);
+        density_dir = io::make_simulation_subdir(out_dir, P.U0, P.gamma, dt);
+        fs::create_directories(density_dir);
+        density_cfg.num_csv_path = (density_dir / "num_density.csv").string();
+        density_cfg.ref_csv_path = (density_dir / "ref_density.csv").string();
+        if (!P.quiet) {
+            std::cout << "# [density] exporting numerical/reference densities to "
+                      << density_dir << " every " << density_cfg.every
+                      << " step(s)\n";
+        }
+    }
+
     evolve(method, T, spectral, psi_init, g.dx, dt, tol, nsteps, K,
            csv_path.string(), x_ptr,
            P.wide_re, P.wide_im, P.quiet,
            P.log_every, P.csv_every, P.aggregate,
            P.flush_every, P.no_theta, P.profile,
-           energy_cfg);
+           energy_cfg, density_cfg);
 
     if (!P.quiet) {
         std::cout << "# log saved to: " << csv_path.string() << "\n";

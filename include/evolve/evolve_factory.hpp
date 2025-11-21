@@ -16,6 +16,14 @@ struct EnergyLogConfig {
     std::string csv_path;
 };
 
+struct DensityLogConfig {
+    bool enabled = false;
+    std::vector<double> x_inner;
+    std::string num_csv_path;
+    std::string ref_csv_path;
+    int every = 1;
+};
+
 void evolve(const std::string& method,
             const Tridiag& T,
             const SpectralData& spectral,
@@ -36,5 +44,6 @@ void evolve(const std::string& method,
             int flush_every,
             bool no_theta,
             bool profile,
-            const EnergyLogConfig& energy_cfg = EnergyLogConfig{});
+            const EnergyLogConfig& energy_cfg = EnergyLogConfig{},
+            const DensityLogConfig& density_cfg = DensityLogConfig{});
 

@@ -121,7 +121,8 @@ void evolve(const std::string& method,
             int flush_every,
             bool no_theta,
             bool profile,
-            const EnergyLogConfig& energy_cfg) {
+            const EnergyLogConfig& energy_cfg,
+            const DensityLogConfig& density_cfg) {
     const std::string method_norm = normalize_method(method);
     const bool is_cheb = (method_norm == "cheb");
 
@@ -188,6 +189,40 @@ void evolve(const std::string& method,
 
     io::WideDump wide(csv_path, x_inner, wide_re, wide_im);
 
+    const bool density_logging = density_cfg.enabled &&
+                                 !density_cfg.x_inner.empty() &&
+                                 !density_cfg.num_csv_path.empty() &&
+                                 !density_cfg.ref_csv_path.empty();
+
+    std::ofstream density_num_csv;
+    std::ofstream density_ref_csv;
+    bool density_header_written = false;
+    int density_rows = 0;
+
+    if (density_logging) {
+        if (static_cast<std::size_t>(psi_init.size()) != density_cfg.x_inner.size()) {
+            throw std::runtime_error("density logging grid mismatch");
+        }
+
+        fs::path num_path = fs::path(density_cfg.num_csv_path);
+        fs::path ref_path = fs::path(density_cfg.ref_csv_path);
+        std::error_code ec;
+        if (!num_path.parent_path().empty()) {
+            fs::create_directories(num_path.parent_path(), ec);
+        }
+        if (!ref_path.parent_path().empty()) {
+            fs::create_directories(ref_path.parent_path(), ec);
+        }
+
+        density_num_csv.open(num_path, std::ios::out | std::ios::trunc);
+        density_ref_csv.open(ref_path, std::ios::out | std::ios::trunc);
+        if (!density_num_csv || !density_ref_csv) {
+            throw std::runtime_error("failed to open density CSV outputs");
+        }
+        density_num_csv << std::setprecision(16);
+        density_ref_csv << std::setprecision(16);
+    }
+
     Eigen::VectorXcd psi = psi_init;
     double t = 0.0;
 
@@ -242,6 +277,39 @@ void evolve(const std::string& method,
     };
 
 
+    auto write_density_row = [&](const Eigen::VectorXcd& psi, const Eigen::VectorXcd& psi_ref, double time) {
+        if (!density_header_written) {
+            auto write_header = [&](std::ofstream& f) {
+                f << "t";
+                for (double xi : density_cfg.x_inner) {
+                    f << ',' << xi;
+                }
+                f << '\n';
+            };
+            write_header(density_num_csv);
+            write_header(density_ref_csv);
+            density_header_written = true;
+        }
+
+        auto write_row = [&](std::ofstream& f, const Eigen::VectorXcd& state) {
+            f << time;
+            for (int i = 0; i < state.size(); ++i) {
+                const double re = state[i].real();
+                const double im = state[i].imag();
+                f << ',' << (re * re + im * im);
+            }
+            f << '\n';
+        };
+
+        write_row(density_num_csv, psi);
+        write_row(density_ref_csv, psi_ref);
+        ++density_rows;
+        if (flush_every > 0 && (density_rows % flush_every) == 0) {
+            density_num_csv.flush();
+            density_ref_csv.flush();
+        }
+    };
+
     for (int step = 0; step < nsteps; ++step)
     {
         const auto start = std::chrono::steady_clock::now();
@@ -255,6 +323,15 @@ void evolve(const std::string& method,
         const double norm_err = std::abs(norm_sq - 1.0);
 
         update_interval(agg, dt_ms, result.matvecs, norm_err, result);
+
+        const bool log_density = density_logging &&
+                                 ((density_cfg.every <= 1) ||
+                                  ((step % density_cfg.every) == 0) ||
+                                  (step + 1 == nsteps));
+        if (log_density) {
+            Eigen::VectorXcd psi_ref = compute_reference_state(t);
+            write_density_row(psi, psi_ref, t);
+        }
 
         if (cfg.profile && result.profile) {
             profile_acc.step_us += result.profile->step_us;
