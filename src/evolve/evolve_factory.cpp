@@ -193,6 +193,7 @@ void evolve(const std::string& method,
                                  !density_cfg.x_inner.empty() &&
                                  !density_cfg.num_csv_path.empty() &&
                                  !density_cfg.ref_csv_path.empty();
+    const int density_every = density_logging ? std::max(1, density_cfg.every) : 1;
 
     std::ofstream density_num_csv;
     std::ofstream density_ref_csv;
@@ -273,7 +274,7 @@ void evolve(const std::string& method,
         constexpr std::complex<double> I(0.0, 1.0);
         Eigen::ArrayXcd phase = (-I * spectral.evals.array() * time).exp();
         Eigen::VectorXcd coeffs = (spectral.coeffs0.array() * phase).matrix();
-        return spectral.eigenvectors * coeffs;
+        return (spectral.eigenvectors * coeffs).eval();
     };
 
 
@@ -312,6 +313,16 @@ void evolve(const std::string& method,
 
     for (int step = 0; step < nsteps; ++step)
     {
+        bool psi_ref_ready = false;
+        Eigen::VectorXcd psi_ref_cache;
+        const auto& ensure_reference_state = [&]() -> const Eigen::VectorXcd& {
+            if (!psi_ref_ready) {
+                psi_ref_cache = compute_reference_state(t);
+                psi_ref_ready = true;
+            }
+            return psi_ref_cache;
+        };
+
         const auto start = std::chrono::steady_clock::now();
         StepResult result = evolver->step(psi);
         const auto end = std::chrono::steady_clock::now();
@@ -324,11 +335,14 @@ void evolve(const std::string& method,
 
         update_interval(agg, dt_ms, result.matvecs, norm_err, result);
 
-        const bool log_density = density_logging &&
-                                 ((step % density_cfg.every) == 0 || step == 0 || step + 1 == nsteps);
-        if (log_density) {
-            Eigen::VectorXcd psi_ref = compute_reference_state(t);
-            write_density_row(psi, psi_ref, t);
+        if (density_logging) {
+            const bool log_density = (density_every <= 1) ||
+                                     ((step % density_every) == 0) ||
+                                     (step + 1 == nsteps);
+            if (log_density) {
+                const Eigen::VectorXcd& psi_ref = ensure_reference_state();
+                write_density_row(psi, psi_ref, t);
+            }
         }
 
 
@@ -376,7 +390,7 @@ void evolve(const std::string& method,
             const bool in_theta_window = theta_debug_enabled &&
                                          (t >= theta_debug_lo) && (t <= theta_debug_hi);
             if (in_theta_window) {
-                Eigen::VectorXcd psi_ref = compute_reference_state(t);
+                const Eigen::VectorXcd& psi_ref = ensure_reference_state();
                 std::complex<double> z_grid = inner_dx(psi_ref, psi, dx);
                 std::complex<double> z_coeff = compute_overlap_coeffs(spectral, psi, t, dx);
                 const double theta_raw_grid = std::arg(z_grid);
