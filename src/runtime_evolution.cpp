@@ -199,18 +199,19 @@ fs::path run_time_evolution(const Grid& g,
     if (P.export_ref_density) {
         density_cfg.enabled = true;
         density_cfg.x_inner = x_inner;
-        density_cfg.every = std::max(1, P.log_every);
-        density_dir = io::make_simulation_subdir(out_dir, P.U0, P.gamma, dt);
-        fs::create_directories(density_dir);
-        density_cfg.num_csv_path = (density_dir / "num_density.csv").string();
-        density_cfg.ref_csv_path = (density_dir / "ref_density.csv").string();
-        if (!P.quiet) {
-            std::cout << "# [density] exporting numerical/reference densities to "
-                      << density_dir << " every " << density_cfg.every
-                      << " step(s)\n";
-        }
-    }
+    density_cfg.every = std::max(1, P.log_every);
 
+    density_dir = io::make_simulation_subdir(out_dir, P.U0, P.gamma, dt);
+    fs::create_directories(density_dir);
+    density_cfg.num_csv_path = (density_dir / "num_density.csv").string();
+    density_cfg.ref_csv_path = (density_dir / "ref_density.csv").string();
+
+    if (!P.quiet) {
+        std::cout << "# [density] exporting numerical/reference densities to "
+                  << density_dir << " every " << density_cfg.every
+                  << " step(s)\n";
+}
+      
     evolve(method, T, spectral, psi_init, g.dx, dt, tol, nsteps, K,
            csv_path.string(), x_ptr,
            P.wide_re, P.wide_im, P.quiet,
