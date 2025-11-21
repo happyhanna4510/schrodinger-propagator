@@ -193,6 +193,7 @@ void evolve(const std::string& method,
                                  !density_cfg.x_inner.empty() &&
                                  !density_cfg.num_csv_path.empty() &&
                                  !density_cfg.ref_csv_path.empty();
+    const int density_every = density_logging ? std::max(1, density_cfg.every) : 1;
 
     std::ofstream density_num_csv;
     std::ofstream density_ref_csv;
@@ -273,7 +274,7 @@ void evolve(const std::string& method,
         constexpr std::complex<double> I(0.0, 1.0);
         Eigen::ArrayXcd phase = (-I * spectral.evals.array() * time).exp();
         Eigen::VectorXcd coeffs = (spectral.coeffs0.array() * phase).matrix();
-        return spectral.eigenvectors * coeffs;
+        return (spectral.eigenvectors * coeffs).eval();
     };
 
 
@@ -324,11 +325,14 @@ void evolve(const std::string& method,
 
         update_interval(agg, dt_ms, result.matvecs, norm_err, result);
 
-        const bool log_density = density_logging &&
-                                 ((step % density_cfg.every) == 0 || step == 0 || step + 1 == nsteps);
-        if (log_density) {
-            Eigen::VectorXcd psi_ref = compute_reference_state(t);
-            write_density_row(psi, psi_ref, t);
+        if (density_logging) {
+            const bool log_density = (density_every <= 1) ||
+                                     ((step % density_every) == 0) ||
+                                     (step + 1 == nsteps);
+            if (log_density) {
+                const Eigen::VectorXcd psi_ref = compute_reference_state(t);
+                write_density_row(psi, psi_ref, t);
+            }
         }
 
 
