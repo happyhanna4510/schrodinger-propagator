@@ -325,14 +325,11 @@ void evolve(const std::string& method,
 
         update_interval(agg, dt_ms, result.matvecs, norm_err, result);
 
-        if (density_logging) {
-            const bool log_density = (density_every <= 1) ||
-                                     ((step % density_every) == 0) ||
-                                     (step + 1 == nsteps);
-            if (log_density) {
-                const Eigen::VectorXcd psi_ref = compute_reference_state(t);
-                write_density_row(psi, psi_ref, t);
-            }
+        const bool log_density = density_logging &&
+                                 ((step % density_cfg.every) == 0 || step == 0 || step + 1 == nsteps);
+        if (log_density) {
+            Eigen::VectorXcd psi_ref = compute_reference_state(t);
+            write_density_row(psi, psi_ref, t);
         }
 
 
@@ -361,7 +358,7 @@ void evolve(const std::string& method,
             }
             const int step_out = step + 1;
 
-
+            
             if (theta_debug_enabled && std::isfinite(theta_abs)) {
                 const double t_num = t;
                 const double t_ref = static_cast<double>(step_out) * dt;
