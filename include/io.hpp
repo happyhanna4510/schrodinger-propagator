@@ -53,6 +53,13 @@ fs::path make_csv_path(const fs::path& out_dir,
 
 fs::path make_energy_csv_path(const fs::path& log_csv_path);
 
+std::string fmt_dt_for_filename(double dt);
+std::string fmt_value_for_path(double v);
+fs::path make_simulation_subdir(const fs::path& out_root,
+                                double U0,
+                                double gamma,
+                                double dt);
+
 class WideDump {
 public:
     WideDump(const fs::path& csv_path,

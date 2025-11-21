@@ -48,6 +48,8 @@ struct Params {
     bool wide_im     = false;   //  pisać Im[psi] w wide CSV
     bool profile     = false;   // wypisywać profilowanie integratora
 
+    bool export_ref_density = false; // zapisywać gęstość numeryczną i referencyjną do CSV
+
 };
 
 

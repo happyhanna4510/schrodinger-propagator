@@ -90,11 +90,10 @@ void save_vector_csv(const fs::path& path,
     f << col << "\n";
     for (auto& val : v) f << std::setprecision(12) << val << "\n";
 }
+namespace io {
+namespace fs = std::filesystem;
 
-
-
-
-static std::string fmt_dt_for_filename(double dt) 
+std::string fmt_dt_for_filename(double dt)
 {
     if (dt == 0.0) return "0";
 
@@ -113,9 +112,23 @@ static std::string fmt_dt_for_filename(double dt)
     return os.str();
 }
 
+std::string fmt_value_for_path(double v)
+{
+    std::ostringstream os;
+    os << std::setprecision(6) << std::defaultfloat << v;
+    return os.str();
+}
 
-namespace io {
-namespace fs = std::filesystem;
+fs::path make_simulation_subdir(const fs::path& out_root,
+                                double U0,
+                                double gamma,
+                                double dt)
+{
+    const std::string u0_part = std::string("U0_") + fmt_value_for_path(U0);
+    const std::string g_part  = std::string("g") + fmt_value_for_path(gamma);
+    const std::string dt_part = std::string("dt") + fmt_dt_for_filename(dt);
+    return out_root / u0_part / g_part / dt_part;
+}
 
 namespace {
 
