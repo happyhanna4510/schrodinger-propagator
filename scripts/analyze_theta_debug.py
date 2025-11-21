@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 # ==============================
 
 # 1) Ścieżka do logu theta-debug
-log_path = Path(r"results\U0_-1\g10\dt1e-5\theta_debug_rk4_dt1e-5_g10_U0_-1.log")
+log_path = Path(r"results\U0_-100\g10\dt1e-5\theta_debug_cheb_dt1e-5_g10_U0_-100.log")
 
 # 2) Katalog główny na wykresy
 plots_root = Path("plots_out")
@@ -59,41 +59,62 @@ time_entries = {
 
 overlap_entries = {
     "t": [],
-    "Re": [],
-    "Im": [],
-    "z_abs": [],
-    "theta_raw": [],
+    "z_grid": [],
+    "z_coeff": [],
+    "theta_raw_grid": [],
+    "theta_raw_coeff": [],
+    "norm_psi": [],
+    "norm_ref": [],
     "theta_abs": [],
 }
+
 
 time_re = re.compile(
     r"step=([0-9]+).*t_num=([0-9eE\+\-\.]+).*t_ref=([0-9eE\+\-\.]+).*theta_abs=([0-9eE\+\-\.]+)"
 )
 overlap_re = re.compile(
-    r"t=([0-9eE\+\-\.]+)\s+Re=([0-9eE\+\-\.]+)\s+Im=([0-9eE\+\-\.]+)\s+\|z\|=([0-9eE\+\-\.]+)\s+theta_raw=([0-9eE\+\-\.]+)\s+theta_abs=([0-9eE\+\-\.]+)"
+    r"t=([0-9eE\+\-\.]+)\s+"
+    r"\|z_grid\|=([0-9eE\+\-\.]+)\s+"
+    r"\|z_coeff\|=([0-9eE\+\-\.]+)\s+"
+    r"theta_raw_grid=([0-9eE\+\-\.]+)\s+"
+    r"theta_raw_coeff=([0-9eE\+\-\.]+)\s+"
+    r"norm_psi=([0-9eE\+\-\.]+)\s+"
+    r"norm_ref=([0-9eE\+\-\.]+)\s+"
+    r"theta_abs=([0-9eE\+\-\.]+)"
 )
 
 with open(log_path, "r", encoding="utf-16") as f:
     for line in f:
         line = line.strip()
-        if line.startswith("# [theta-debug-time]"):
-            m = time_re.search(line)
-            if m:
-                step, t_num, t_ref, theta_abs = m.groups()
-                time_entries["step"].append(int(step))
-                time_entries["t_num"].append(float(t_num))
-                time_entries["t_ref"].append(float(t_ref))
-                time_entries["theta_abs"].append(float(theta_abs))
-        elif line.startswith("# [theta-debug-overlap]"):
-            m = overlap_re.search(line)
-            if m:
-                t, Re_z, Im_z, z_abs, theta_raw, theta_abs = m.groups()
-                overlap_entries["t"].append(float(t))
-                overlap_entries["Re"].append(float(Re_z))
-                overlap_entries["Im"].append(float(Im_z))
-                overlap_entries["z_abs"].append(float(z_abs))
-                overlap_entries["theta_raw"].append(float(theta_raw))
-                overlap_entries["theta_abs"].append(float(theta_abs))
+
+        # najpierw probujemy dopasować "time"
+        m_time = time_re.search(line)
+        if m_time:
+            step, t_num, t_ref, theta_abs = m_time.groups()
+            time_entries["step"].append(int(step))
+            time_entries["t_num"].append(float(t_num))
+            time_entries["t_ref"].append(float(t_ref))
+            time_entries["theta_abs"].append(float(theta_abs))
+            continue
+
+        # potem probujemy dopasować "overlap"
+        m_ov = overlap_re.search(line)
+        if m_ov:
+            (t,
+             z_grid, z_coeff,
+             theta_raw_grid, theta_raw_coeff,
+             norm_psi, norm_ref,
+             theta_abs_ov) = m_ov.groups()
+
+            overlap_entries["t"].append(float(t))
+            overlap_entries["z_grid"].append(float(z_grid))
+            overlap_entries["z_coeff"].append(float(z_coeff))
+            overlap_entries["theta_raw_grid"].append(float(theta_raw_grid))
+            overlap_entries["theta_raw_coeff"].append(float(theta_raw_coeff))
+            overlap_entries["norm_psi"].append(float(norm_psi))
+            overlap_entries["norm_ref"].append(float(norm_ref))
+            overlap_entries["theta_abs"].append(float(theta_abs_ov))
+
 
 print(f"Odczytano {len(time_entries['step'])} linii theta-debug-time")
 print(f"Odczytano {len(overlap_entries['t'])} linii theta-debug-overlap")
@@ -134,22 +155,27 @@ fig1.savefig(fig1_path, dpi=150, bbox_inches="tight")
 print(f"[INFO] Zapisano: {fig1_path}")
 
 # ==============================
-# WYKRESY 2 i 3: theta i |z|
+# WYKRESY 2–4: theta, |z|, normy
 # ==============================
 
 if len(overlap_entries["t"]) > 0:
-    t_ov  = np.array(overlap_entries["t"])
-    z_abs = np.array(overlap_entries["z_abs"])
-    theta_raw = np.array(overlap_entries["theta_raw"])
-    theta_abs_ov = np.array(overlap_entries["theta_abs"])
+    t_ov            = np.array(overlap_entries["t"])
+    z_grid          = np.array(overlap_entries["z_grid"])
+    z_coeff         = np.array(overlap_entries["z_coeff"])
+    theta_raw_grid  = np.array(overlap_entries["theta_raw_grid"])
+    theta_raw_coeff = np.array(overlap_entries["theta_raw_coeff"])
+    norm_psi        = np.array(overlap_entries["norm_psi"])
+    norm_ref        = np.array(overlap_entries["norm_ref"])
+    theta_abs_ov    = np.array(overlap_entries["theta_abs"])
 
-    # --- Theta ---
+    # --- Wykres fazy theta ---
     fig2 = plt.figure()
-    plt.plot(t_ov, theta_raw, ".-", label="theta_raw (surowa)")
-    plt.plot(t_ov, theta_abs_ov, ".-", label="theta_abs (bezwzgledna)")
+    plt.plot(t_ov, theta_raw_grid, ".-", label="theta_raw_grid")
+    plt.plot(t_ov, theta_raw_coeff, ".-", label="theta_raw_coeff")
+    plt.plot(t_ov, theta_abs_ov, ".-", label="theta_abs")
     plt.xlabel("t")
     plt.ylabel("theta")
-    plt.title(f"Zachowanie fazy w okolicy minimum ({method_name}, {u0_name}, {gamma_name}, {dt_name})")
+    plt.title(f"Zachowanie fazy ({method_name}, {u0_name}, {gamma_name}, {dt_name})")
     plt.legend()
     plt.grid(True)
 
@@ -157,21 +183,36 @@ if len(overlap_entries["t"]) > 0:
     fig2.savefig(fig2_path, dpi=150, bbox_inches="tight")
     print(f"[INFO] Zapisano: {fig2_path}")
 
-    # --- |z| ---
+    # --- Wykres |z_grid| i |z_coeff| ---
     fig3 = plt.figure()
-    plt.plot(t_ov, z_abs, ".-")
+    plt.plot(t_ov, z_grid, ".-", label="|z_grid|")
+    plt.plot(t_ov, z_coeff, ".-", label="|z_coeff|")
     plt.xlabel("t")
     plt.ylabel("|z|")
-    plt.title(f"Modul iloczynu skalarnego |<psi_ref|psi_num>| ({method_name}, {u0_name}, {gamma_name}, {dt_name})")
+    plt.title(f"Modul iloczynu skalarnego ({method_name}, {u0_name}, {gamma_name}, {dt_name})")
+    plt.legend()
     plt.grid(True)
 
     fig3_path = out_dir / "modul_iloczynu_skal.png"
     fig3.savefig(fig3_path, dpi=150, bbox_inches="tight")
     print(f"[INFO] Zapisano: {fig3_path}")
+
+    # --- Wykres norm psi_num i psi_ref ---
+    fig4 = plt.figure()
+    plt.plot(t_ov, norm_psi, ".-", label="norm_psi")
+    plt.plot(t_ov, norm_ref, ".-", label="norm_ref")
+    plt.xlabel("t")
+    plt.ylabel("norma")
+    plt.title(f"Normy psi_num i psi_ref ({method_name}, {u0_name}, {gamma_name}, {dt_name})")
+    plt.legend()
+    plt.grid(True)
+
+    fig4_path = out_dir / "normy_psi.png"
+    fig4.savefig(fig4_path, dpi=150, bbox_inches="tight")
+    print(f"[INFO] Zapisano: {fig4_path}")
 else:
     print("\n[WARNING] Brak linii theta-debug-overlap.")
-    print("  -> Byc moze THETA_DEBUG_WINDOW nie obejmuje danego zakresu czasu.")
-    print("  -> W takim przypadku zapisujemy tylko wykres zgodnosci czasu.")
+    ...
 
 # ==============================
 # Pokazywanie okien
