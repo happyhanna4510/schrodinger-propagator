@@ -1,5 +1,4 @@
 import argparse
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,14 +7,21 @@ import pandas as pd
 
 
 def load_density(csv_path: Path):
+    """
+    Wczytuje plik CSV z gęstością:
+    kolumna 't' + kolumny z wartościami w punktach siatki (x1, x2, ...).
+    Zwraca: t (1D), x (1D), rho (2D: czas × x).
+    """
     df = pd.read_csv(csv_path)
     if "t" not in df.columns:
         raise ValueError(f"column 't' not found in {csv_path}")
     x_cols = [c for c in df.columns if c != "t"]
+
     try:
         x = np.array([float(c) for c in x_cols], dtype=float)
     except ValueError as exc:
         raise ValueError(f"cannot parse x columns in {csv_path}") from exc
+
     t = df["t"].to_numpy(dtype=float)
     rho = df[x_cols].to_numpy(dtype=float)
     return t, x, rho
@@ -27,6 +33,12 @@ def ensure_dir(path: Path) -> Path:
 
 
 def map_results_to_plots(results_dir: Path) -> Path:
+    """
+    Mapuje:
+      results/...  -> plots_out/...
+    albo jeśli nie ma 'results' w ścieżce, to tworzy:
+      <parent>/plots_out/<nazwa_katalogu>
+    """
     parts = results_dir.resolve().parts
     if "results" in parts:
         idx = parts.index("results")
@@ -56,18 +68,21 @@ def plot_heatmap(data: np.ndarray, x: np.ndarray, t: np.ndarray, out_path: Path,
 def main():
     ap = argparse.ArgumentParser(
         description=(
-            "Plot reference vs numerical densities. Reads num_density.csv and ref_density.csv "
-            "from a simulation directory and writes heatmaps alongside diff."
+            "Plot reference vs numerical densities. "
+            "Reads num_density.csv and ref_density.csv from a simulation directory "
+            "and writes heatmaps plus basic error stats."
         )
     )
     ap.add_argument(
         "--results-dir",
         required=True,
-        help="Directory containing num_density.csv and ref_density.csv (e.g., results/U0_-1/g10/dt1e-5)",
+        help="Directory containing num_density.csv and ref_density.csv "
+             "(e.g., results/U0_-1/g10/dt1e-5)",
     )
     ap.add_argument(
         "--out-dir",
-        help="Optional output directory for PNGs. Default mirrors results_dir under plots_out.",
+        help="Optional output directory for PNGs. "
+             "Default mirrors results_dir under plots_out.",
     )
 
     args = ap.parse_args()
@@ -76,6 +91,7 @@ def main():
     num_csv = results_dir / "num_density.csv"
     ref_csv = results_dir / "ref_density.csv"
 
+    # --- wczytanie gęstości numerycznej i referencyjnej ---
     t_num, x_num, rho_num = load_density(num_csv)
     t_ref, x_ref, rho_ref = load_density(ref_csv)
 
@@ -91,15 +107,40 @@ def main():
     heatmap_ref = out_dir / "heatmap_ref.png"
     heatmap_diff = out_dir / "heatmap_diff.png"
 
-    plot_heatmap(rho_num, x_num, t_num, heatmap_num, "Numerical density |ψ|²")
-    plot_heatmap(rho_ref, x_ref, t_ref, heatmap_ref, "Reference density |ψ_ref|²")
-    plot_heatmap(rho_ref - rho_num, x_ref, t_ref, heatmap_diff, "ρ_ref - ρ_num")
+    # --- heatmapy ---
+    plot_heatmap(rho_num, x_num, t_num, heatmap_num, "Numerical density |psi|^2")
+    plot_heatmap(rho_ref, x_ref, t_ref, heatmap_ref, "Reference density |psi_ref|^2")
+    plot_heatmap(rho_ref - rho_num, x_ref, t_ref, heatmap_diff, "rho_ref - rho_num")
 
     print(f"[OK] Saved {heatmap_num}")
     print(f"[OK] Saved {heatmap_ref}")
     print(f"[OK] Saved {heatmap_diff}")
 
+    # --- proste statystyki błędu ---
+    diff = rho_ref - rho_num
+    max_abs = float(np.max(np.abs(diff)))
+    max_rho = float(np.max(rho_num))
+    rel = max_abs / max_rho if max_rho > 0 else np.nan
+
+    print("\n[STATS] density difference:")
+    print("  max |rho_ref - rho_num| =", max_abs)
+    print("  max rho_num            =", max_rho)
+    print("  max relative difference =", rel)
+
+
+
+    # найти, где именно максимум
+    it, ix = np.unravel_index(np.argmax(np.abs(diff)), diff.shape)
+
+    print("\n[ARGMAX] miejsce maksymalnej różnicy:")
+    print("  it (czas)    =", it)
+    print("  ix (x-index) =", ix)
+    print("  t[it]        =", t_num[it])
+    print("  x[ix]        =", x_num[ix])
+    print("  rho_num      =", rho_num[it, ix])
+    print("  rho_ref      =", rho_ref[it, ix])
+    print("  diff         =", diff[it, ix])
+
 
 if __name__ == "__main__":
     main()
-
