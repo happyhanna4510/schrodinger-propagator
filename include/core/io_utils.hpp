@@ -13,6 +13,11 @@ double compute_theta(const SpectralData& S,
                      double t, double dx,
                      bool relative = false);
 
+std::complex<double> compute_overlap_coeffs(const SpectralData& S,
+                                            const Eigen::VectorXcd& psi,
+                                            double t,
+                                            double dx);
+
 
 void write_step_csv_header(std::ofstream& f, bool include_cheb_extras);
 

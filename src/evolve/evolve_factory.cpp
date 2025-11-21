@@ -224,6 +224,15 @@ void evolve(const std::string& method,
         long long samples = 0;
     } profile_acc;
 
+    struct ThetaDebugSummary {
+        double min_theta_abs = std::numeric_limits<double>::infinity();
+        double max_dev_z_coeff = 0.0;
+        double max_dev_z_grid = 0.0;
+        bool anomalies_z_grid = false;
+        bool theta_consistent_with_coeff = true;
+        long long samples = 0;
+    } theta_summary;
+
 
     auto compute_reference_state = [&](double time) {
         constexpr std::complex<double> I(0.0, 1.0);
@@ -292,17 +301,31 @@ void evolve(const std::string& method,
                                          (t >= theta_debug_lo) && (t <= theta_debug_hi);
             if (in_theta_window) {
                 Eigen::VectorXcd psi_ref = compute_reference_state(t);
-                std::complex<double> z = inner_dx(psi_ref, psi, dx);
-                const double theta_raw = std::arg(z);
-                const double z_abs = std::abs(z);
+                std::complex<double> z_grid = inner_dx(psi_ref, psi, dx);
+                std::complex<double> z_coeff = compute_overlap_coeffs(spectral, psi, t, dx);
+                const double theta_raw_grid = std::arg(z_grid);
+                const double theta_raw_coeff = std::arg(z_coeff);
+                const double z_abs_grid = std::abs(z_grid);
+                const double z_abs_coeff = std::abs(z_coeff);
+                const double norm_psi = l2_norm(psi, dx);
+                const double norm_ref = l2_norm(psi_ref, dx);
+                theta_summary.min_theta_abs = std::min(theta_summary.min_theta_abs, theta_abs);
+                theta_summary.max_dev_z_coeff = std::max(theta_summary.max_dev_z_coeff, std::abs(z_abs_coeff - 1.0));
+                theta_summary.max_dev_z_grid = std::max(theta_summary.max_dev_z_grid, std::abs(z_abs_grid - 1.0));
+                theta_summary.anomalies_z_grid = theta_summary.anomalies_z_grid || (z_abs_grid < 0.9 || z_abs_grid > 1.1);
+                theta_summary.theta_consistent_with_coeff = theta_summary.theta_consistent_with_coeff &&
+                                                           !((z_abs_coeff > 0.9) && (theta_abs > 1e-3));
+                ++theta_summary.samples;
                 std::streamsize old_prec = std::cout.precision();
                 std::ios::fmtflags old_flags = std::cout.flags();
                 std::cout.setf(std::ios::scientific);
                 std::cout << "# [theta-debug-overlap] t=" << std::setprecision(9) << t
-                          << " Re=" << std::setprecision(6) << z.real()
-                          << " Im=" << std::setprecision(6) << z.imag()
-                          << " |z|=" << std::setprecision(6) << z_abs
-                          << " theta_raw=" << std::setprecision(6) << theta_raw
+                          << " |z_grid|=" << std::setprecision(6) << z_abs_grid
+                          << " |z_coeff|=" << std::setprecision(6) << z_abs_coeff
+                          << " theta_raw_grid=" << std::setprecision(6) << theta_raw_grid
+                          << " theta_raw_coeff=" << std::setprecision(6) << theta_raw_coeff
+                          << " norm_psi=" << std::setprecision(6) << norm_psi
+                          << " norm_ref=" << std::setprecision(6) << norm_ref
                           << " theta_abs=" << std::setprecision(6) << theta_abs
                           << '\n';
                 std::cout.precision(old_prec);
@@ -343,6 +366,45 @@ void evolve(const std::string& method,
         }
 
 
+    }
+
+    if (theta_debug_enabled && theta_summary.samples > 0) {
+        const bool coeff_stable = theta_summary.max_dev_z_coeff < 1e-2;
+        const bool anomalies_grid = theta_summary.anomalies_z_grid;
+        const bool theta_consistent = theta_summary.theta_consistent_with_coeff;
+        const double min_theta_abs = theta_summary.min_theta_abs;
+
+        std::string probable_cause;
+        if (anomalies_grid && coeff_stable) {
+            probable_cause = "grid overlap sensitivity to dx normalization causing suppressed |z_grid|";
+        } else if (anomalies_grid) {
+            probable_cause = "grid overlap instability (possible amplitude scaling or dx sensitivity)";
+        } else {
+            probable_cause = "overlaps consistent; no suppression observed";
+        }
+
+        std::string recommendation;
+        if (anomalies_grid) {
+            recommendation = "prefer coefficient-space z(t) for diagnostics; revisit grid normalization and dx scaling";
+        } else {
+            recommendation = "diagnostics stable; continue using both overlaps for cross-checks";
+        }
+
+        std::streamsize old_prec = std::cout.precision();
+        std::ios::fmtflags old_flags = std::cout.flags();
+        std::cout.setf(std::ios::scientific);
+        std::cout << "\n=== FINAL SUMMARY ===\n";
+        std::cout << "theta_abs minimal: " << std::setprecision(6) << min_theta_abs << "\n";
+        std::cout << "max deviation of |z_coeff| from 1: " << std::setprecision(6)
+                  << theta_summary.max_dev_z_coeff << "\n";
+        std::cout << "observed anomalies in |z_grid|: " << (anomalies_grid ? "yes" : "no") << "\n";
+        std::cout << "|z_coeff| stayed close to 1: " << (coeff_stable ? "yes" : "no") << "\n";
+        std::cout << "theta consistent with z_coeff: " << (theta_consistent ? "yes" : "no") << "\n";
+        std::cout << "probable cause: " << probable_cause << "\n";
+        std::cout << "recommendation: " << recommendation << "\n";
+        std::cout << "======================\n";
+        std::cout.precision(old_prec);
+        std::cout.flags(old_flags);
     }
 
     if (cfg.profile && profile_acc.samples > 0 && !quiet) {
