@@ -5,7 +5,7 @@
 #     U0_<U0>/g<gamma>/dt<dt>/
 #       run.log
 #       <methodTag>_dt<dt>_g<gamma>_N<N>_x<xmax>_U0_<U0>_k0_<k0>_tmax_<tmax>.csv
-#       (plus wide-files only for cheb)
+#       (plus wide-files for ALL methods, not only cheb)
 # ============================================
 
 try {
@@ -42,9 +42,9 @@ $methods = @("cheb", "rk4", "taylor")
 $taylorK = 4
 
 # physics
-$U0List    = @(-30)
+$U0List    = @(1)
 $gammaList = @(10)
-$dtList    = @("1e-5","1e-4","1e-3")
+$dtList    = @("1e-4")
 
 $TARGET_LOG_LINES = 200
 
@@ -54,7 +54,7 @@ New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
 # --- PARALLELISM ---
 $cores   = [Environment]::ProcessorCount
-$maxJobs = [Math]::Max(1, [Math]::Min($cores - 1, 7))   # <= ТУТ ТЕПЕРЬ 7
+$maxJobs = [Math]::Max(1, [Math]::Min($cores - 1, 7))
 Write-Host "Max parallel jobs: $maxJobs of $cores cores" -ForegroundColor Yellow
 
 # --- avoid oversubscription in BLAS ---
@@ -130,6 +130,7 @@ function Start-FieldTask {
       $csvName = "{0}_dt{1}_g{2}_N{3}_x{4}_U0_{5}_k0_{6}_tmax_{7}.csv" -f `
                  $methodTag, $dtStr, $gamma, $N, $xmax, $U0, $k0, $tmax
 
+      # ---- ОБЩИЕ аргументы ДЛЯ ВСЕХ МЕТОДОВ (с wide) ----
       $baseArgs = @(
         "--gamma",     $gamma,
         "--N",         $N,
@@ -141,14 +142,14 @@ function Start-FieldTask {
         "--U0",        $U0,
         "--outdir",    $dtFolder,
         "--csv",       $csvName,
-        "--log-every", $logEvery
+        "--log-every", $logEvery,
+        "--wide"                  # <<<<<< ТУТ: wide для всех
       )
 
       switch ($method) {
         "cheb" {
           $args = @(
-            "--evolve", "cheb",
-            "--wide"
+            "--evolve", "cheb"
           ) + $baseArgs
         }
         "rk4" {
@@ -253,5 +254,3 @@ foreach ($ctx in @($active)) {
 }
 
 Write-Host ("All field tasks finished. Total: {0}. Max parallel: {1}. Output root: {2}" -f $total, $maxJobs, $resultsRoot) -ForegroundColor Green
-
-
