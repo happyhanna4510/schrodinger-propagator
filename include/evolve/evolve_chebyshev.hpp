@@ -3,6 +3,8 @@
 #include <Eigen/Core>
 
 #include <complex>
+#include <filesystem>
+#include <vector>
 
 #include "core/spectral.hpp"
 #include "evolve/evolver_base.hpp"
@@ -30,6 +32,12 @@ private:
     Eigen::VectorXcd p_curr_;
     Eigen::VectorXcd tmp_;
 
+    std::vector<std::complex<double>> betas_;
+    std::filesystem::path cheb_beta_log_path_;
+    bool log_betas_ = false;
+    bool betas_written_ = false;
+
     void apply_normalized(const Eigen::VectorXcd& in, Eigen::VectorXcd& out);
+    void maybe_write_betas(int terms);
 };
 

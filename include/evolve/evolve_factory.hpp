@@ -45,5 +45,6 @@ void evolve(const std::string& method,
             bool no_theta,
             bool profile,
             const EnergyLogConfig& energy_cfg = EnergyLogConfig{},
-            const DensityLogConfig& density_cfg = DensityLogConfig{});
+            const DensityLogConfig& density_cfg = DensityLogConfig{},
+            const std::string& cheb_beta_log_path = std::string());
 

@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 
 #include <optional>
+#include <string>
 
 #include "core/tridiag.hpp"
 
@@ -18,6 +19,7 @@ struct EvolverConfig {
     int    flush_every = 1000;
     bool   no_theta    = false;
     bool   profile     = false;
+    std::string cheb_beta_log_path;
 };
 
 struct StepProfile {

@@ -26,7 +26,8 @@ void print_help(const char* prog) {
               << "  --dt <value>                        Time step size.\n"
               << "  --tmax <value>                      Total simulated time.\n"
               << "  --K <value>                         Taylor/Chebyshev order limit.\n"
-              << "  --tol <value>                       Chebyshev tolerance.\n\n"
+              << "  --tol <value>                       Chebyshev tolerance.\n"
+              << "  --cheb-beta-log <path>              Save Chebyshev coefficients beta_n to CSV.\n\n"
               << "Grid & potential:\n"
               << "  --N <value>                         Number of grid points.\n"
               << "  --xmax <value>                      Half-width of domain [-xmax, xmax].\n"
@@ -109,6 +110,7 @@ Params parse_args(int argc, char** argv) {
         else if (s == "--tmax")     getd(i, p.tmax);
         else if (s == "--K")        geti(i, p.K);
         else if (s == "--tol")      getd(i, p.tol);
+        else if (s == "--cheb-beta-log") gets(i, p.cheb_beta_log);
         else if (s == "--log" || s == "--log-every") geti(i, p.log_every);
         else if (s == "--log-energy") p.log_energy = true;
         else if (s == "--csv-every") geti(i, p.csv_every);
