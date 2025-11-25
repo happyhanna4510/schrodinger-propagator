@@ -122,7 +122,8 @@ void evolve(const std::string& method,
             bool no_theta,
             bool profile,
             const EnergyLogConfig& energy_cfg,
-            const DensityLogConfig& density_cfg) {
+            const DensityLogConfig& density_cfg,
+            const std::string& cheb_beta_log_path) {
     const std::string method_norm = normalize_method(method);
     const bool is_cheb = (method_norm == "cheb");
 
@@ -138,6 +139,7 @@ void evolve(const std::string& method,
     cfg.flush_every = flush_every;
     cfg.no_theta = no_theta;
     cfg.profile = profile;
+    cfg.cheb_beta_log_path = cheb_beta_log_path;
 
     const char* theta_debug_env = std::getenv("THETA_DEBUG");
     const bool theta_debug_enabled = theta_debug_env && theta_debug_env[0] != '\0';

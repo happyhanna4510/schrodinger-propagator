@@ -121,6 +121,14 @@ fs::path run_time_evolution(const Grid& g,
         ? io::make_csv_path(out_dir, P, method, K, dt, g)
         : out_dir / P.csv_name;
 
+    fs::path cheb_beta_path;
+    if (!P.cheb_beta_log.empty()) {
+        cheb_beta_path = fs::path(P.cheb_beta_log);
+        if (cheb_beta_path.is_relative()) {
+            cheb_beta_path = out_dir / cheb_beta_path;
+        }
+    }
+
     std::vector<double> x_inner;
     const std::vector<double>* x_ptr = nullptr;
     if (P.wide || P.export_ref_density) {
@@ -219,7 +227,7 @@ fs::path run_time_evolution(const Grid& g,
            P.wide_re, P.wide_im, P.quiet,
            P.log_every, P.csv_every, P.aggregate,
            P.flush_every, P.no_theta, P.profile,
-           energy_cfg, density_cfg);
+           energy_cfg, density_cfg, cheb_beta_path.string());
 
     if (!P.quiet) {
         std::cout << "# log saved to: " << csv_path.string() << "\n";

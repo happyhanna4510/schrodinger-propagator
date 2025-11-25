@@ -50,6 +50,8 @@ struct Params {
 
     bool export_ref_density = false; // zapisywać gęstość numeryczną i referencyjną do CSV
 
+    std::string cheb_beta_log; // opcjonalny zapis współczynników Czebyszewa
+
 };
 
 
